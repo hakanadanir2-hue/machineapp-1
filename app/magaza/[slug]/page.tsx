@@ -39,12 +39,15 @@ export default async function ProductDetailPage({ params }: Props) {
 
   if (!product) notFound();
 
+  const { data: waSetting } = await supabase.from("site_settings").select("value").eq("key", "whatsapp_number").single();
+  const waNumber = waSetting?.value || "903742701455";
+
   const hasDiscount = product.discounted_price && product.discounted_price < product.price;
   const pct = hasDiscount ? Math.round((1 - product.discounted_price / product.price) * 100) : 0;
   const sizes = product.sizes ? product.sizes.split(",").map((s: string) => s.trim()).filter(Boolean) : [];
   const colors = product.colors ? product.colors.split(",").map((c: string) => c.trim()).filter(Boolean) : [];
 
-  const wa = `https://wa.me/903742701455?text=${encodeURIComponent(`Merhaba, "${product.name}" ürünü hakkında bilgi almak istiyorum.`)}`;
+  const wa = `https://wa.me/${waNumber}?text=${encodeURIComponent(`Merhaba, "${product.name}" ürünü hakkında bilgi almak istiyorum.`)}`;
 
   return (
     <>

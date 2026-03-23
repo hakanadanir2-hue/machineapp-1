@@ -72,6 +72,7 @@ export default function ProgramAlPage() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<FitnessProgramData | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
 
   const {
     register,
@@ -102,18 +103,20 @@ export default function ProgramAlPage() {
       if (ok) setStep(s => s + 1);
     } else if (step === 2) {
       setLoading(true);
+      setGenError(null);
       try {
-        const res = await fetch("/api/program/generate", {
+        const res = await fetch("/api/programs/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(watched),
         });
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Program oluşturulamadı");
         setPreview(data.program);
-      } catch {
-        // handle error
+        setStep(3);
+      } catch (e) {
+        setGenError(e instanceof Error ? e.message : "Bir hata oluştu. Lütfen tekrar deneyin.");
       }
-      setStep(3);
       setLoading(false);
     }
   };
@@ -306,6 +309,13 @@ export default function ProgramAlPage() {
                       </div>
                     </div>
                   </motion.div>
+                )}
+
+                {/* Hata Mesajı */}
+                {genError && (
+                  <div style={{ margin: "1rem 0", padding: "12px 16px", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", borderRadius: 10, color: "#f87171", fontSize: 14 }}>
+                    {genError}
+                  </div>
                 )}
 
                 {/* Step 3: Preview & Payment */}
