@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isAdminRoute     = pathname.startsWith("/admin");
@@ -39,16 +39,11 @@ export async function proxy(request: NextRequest) {
   if (isDashboardRoute) return response;
 
   if (!isAdminLogin) {
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", session.user.id)
       .single();
-
-    if (profileError && profileError.code === "PGRST116") {
-      await supabase.from("profiles").upsert({ id: session.user.id, role: "user" }, { onConflict: "id" });
-      return NextResponse.redirect(new URL("/", request.url));
-    }
 
     if (!profile || profile.role !== "admin") {
       return NextResponse.redirect(new URL("/", request.url));
