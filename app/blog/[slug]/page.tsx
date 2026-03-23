@@ -1,13 +1,12 @@
 export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
-import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import Link from "next/link";
-import { ArrowLeft, Calendar, Tag } from "lucide-react";
+import { ArrowLeft, Calendar, Tag, Clock } from "lucide-react";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -43,7 +42,28 @@ export default async function BlogPostPage({ params }: Props) {
     .eq("published", true)
     .single();
 
-  if (!post) notFound();
+  if (!post) {
+    return (
+      <>
+        <Navbar />
+        <main style={{ minHeight: "100vh", background: "#0B0B0B", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ textAlign: "center", padding: "2rem" }}>
+            <Clock style={{ width: 48, height: 48, color: "#D4AF37", marginBottom: "1.5rem", margin: "0 auto 1.5rem" }} />
+            <p style={{ color: "#D4AF37", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "0.75rem" }}>Yakında</p>
+            <h1 style={{ color: "#fff", fontSize: "1.75rem", fontWeight: 800, fontFamily: "var(--font-heading)", marginBottom: "1rem" }}>Bu Yazı Hazırlanıyor</h1>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.9375rem", marginBottom: "2rem", maxWidth: "400px" }}>
+              Bu içerik yakında yayında olacak. Blog yazılarımızı takip etmeye devam edin.
+            </p>
+            <Link href="/blog" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.75rem 1.75rem", background: "#6A0D25", color: "#fff", fontWeight: 700, fontSize: "0.9375rem", borderRadius: "12px", textDecoration: "none" }}>
+              <ArrowLeft style={{ width: 16, height: 16 }} /> Blog&apos;a Dön
+            </Link>
+          </div>
+        </main>
+        <WhatsAppButton />
+        <Footer />
+      </>
+    );
+  }
 
   const jsonLd = {
     "@context": "https://schema.org",
