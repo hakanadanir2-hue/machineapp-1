@@ -9,6 +9,7 @@ import HomePricingPreview from "@/components/sections/HomePricingPreview";
 import HomeFAQ from "@/components/sections/HomeFAQ";
 import HomeFinalCTA from "@/components/sections/HomeFinalCTA";
 import { getSettings, s } from "@/lib/settings";
+import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -28,7 +29,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const settings = await getSettings();
+  const [settings, supabase] = await Promise.all([getSettings(), createClient()]);
+  const [{ data: heroMedia }, { data: heroSetting }] = await Promise.all([
+    supabase.from("hero_media").select("id,type,url,order_index").eq("is_active", true).order("order_index"),
+    supabase.from("site_settings").select("value").eq("key", "hero_slideshow_interval").single(),
+  ]);
   return (
     <>
       <Navbar />
@@ -40,6 +45,8 @@ export default async function Home() {
           btn2={s(settings, "hero_btn2")}
           bgImage={s(settings, "hero_bg_image")}
           whatsapp={s(settings, "contact_whatsapp")}
+          initialMedia={(heroMedia ?? []) as { id: string; type: "photo" | "youtube"; url: string; order_index: number }[]}
+          initialInterval={parseInt(heroSetting?.value ?? "3000") || 3000}
         />
         <HomeStats />
         <HomeServices />

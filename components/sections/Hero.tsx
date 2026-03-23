@@ -3,7 +3,6 @@ import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { MessageCircle, ArrowRight } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 
 interface HeroMedia {
   id: string;
@@ -19,6 +18,8 @@ interface HeroProps {
   btn2?: string;
   bgImage?: string;
   whatsapp?: string;
+  initialMedia?: HeroMedia[];
+  initialInterval?: number;
 }
 
 export default function Hero({
@@ -28,11 +29,12 @@ export default function Hero({
   btn2 = "WhatsApp ile Yaz",
   bgImage = "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1920&q=80",
   whatsapp = "903742701455",
+  initialMedia = [],
+  initialInterval = 3000,
 }: HeroProps) {
-  const supabase = createClient();
-  const [mediaItems, setMedia]  = useState<HeroMedia[]>([]);
+  const [mediaItems]    = useState<HeroMedia[]>(initialMedia);
   const [photoIndex, setPhotoIndex] = useState(0);
-  const [interval_, setInterval_]  = useState(3000);
+  const interval_       = initialInterval;
   const [isMobile, setIsMobile] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -44,19 +46,6 @@ export default function Hero({
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
-
-  // Fetch hero media
-  useEffect(() => {
-    async function load() {
-      const [{ data: media }, { data: setting }] = await Promise.all([
-        supabase.from("hero_media").select("id,type,url,order_index").eq("is_active", true).order("order_index"),
-        supabase.from("site_settings").select("value").eq("key", "hero_slideshow_interval").single(),
-      ]);
-      if (media && media.length > 0) setMedia(media as HeroMedia[]);
-      if (setting?.value) setInterval_(parseInt(setting.value) || 3000);
-    }
-    load();
-  }, [supabase]);
 
   // Slideshow timer for photos
   const photos = mediaItems.filter((m) => m.type === "photo");
