@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useState, useEffect, useCallback } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2, CheckCircle, Brain, Dumbbell, Apple, FileText, Flame, Activity, ChevronRight, ChevronLeft } from "lucide-react";
@@ -111,7 +111,7 @@ export default function ProgramAlPage() {
   const [genError, setGenError] = useState<string | null>(null);
 
   const {
-    register, handleSubmit, watch, trigger, setValue,
+    register, handleSubmit, trigger, setValue, getValues, control,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -122,7 +122,14 @@ export default function ProgramAlPage() {
     },
   });
 
-  const watched = watch();
+  // useWatch: sadece seçim kartları için gerekli alanlar — input yazımını etkilemez
+  const gender         = useWatch({ control, name: "gender" });
+  const goal           = useWatch({ control, name: "goal" });
+  const activity_level = useWatch({ control, name: "activity_level" });
+  const level          = useWatch({ control, name: "level" });
+  const weekly_days    = useWatch({ control, name: "weekly_days" });
+  const equipment      = useWatch({ control, name: "equipment" });
+  const diet_preference = useWatch({ control, name: "diet_preference" });
 
   // Restore draft from localStorage
   useEffect(() => {
@@ -137,10 +144,10 @@ export default function ProgramAlPage() {
     } catch { /* ignore */ }
   }, [setValue]);
 
-  // Save draft on change
-  useEffect(() => {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(watched)); } catch { /* ignore */ }
-  }, [watched]);
+  // Debounced localStorage save — sadece step geçişlerinde kaydet
+  const saveDraft = useCallback(() => {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(getValues())); } catch { /* ignore */ }
+  }, [getValues]);
 
   const STEP_FIELDS: Record<number, (keyof FormData)[]> = {
     0: ["full_name", "email", "gender"],
@@ -154,13 +161,14 @@ export default function ProgramAlPage() {
       const ok = fields.length > 0 ? await trigger(fields) : true;
       if (!ok) return;
     }
+    saveDraft();
     if (step < 2) { setStep(s => s + 1); return; }
     if (step === 2) {
       setLoading(true); setGenError(null);
       try {
         const res  = await fetch("/api/programs/generate", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(watched),
+          body: JSON.stringify(getValues()),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Program oluşturulamadı");
@@ -176,10 +184,11 @@ export default function ProgramAlPage() {
 
   const handlePayment = async () => {
     setLoading(true);
+    const vals = getValues();
     try {
       const res  = await fetch("/api/payment/create", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "program", amount: 199, email: watched.email, full_name: watched.full_name }),
+        body: JSON.stringify({ type: "program", amount: 199, email: vals.email, full_name: vals.full_name }),
       });
       const data = await res.json();
       if (data.iframeToken) window.location.href = `https://www.paytr.com/odeme/guvenli/${data.iframeToken}`;
@@ -271,8 +280,8 @@ export default function ProgramAlPage() {
                       <label style={lbl}>Cinsiyet *</label>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                         {[{ v: "male", l: "Erkek" }, { v: "female", l: "Kadın" }].map(opt => (
-                          <RadioCard key={opt.v} checked={watched.gender === opt.v} onClick={() => setValue("gender", opt.v as "male" | "female")}>
-                            <p style={{ textAlign: "center", fontWeight: 600, fontSize: "0.9375rem", color: watched.gender === opt.v ? "#D4AF37" : "rgba(255,255,255,0.6)" }}>{opt.l}</p>
+                          <RadioCard key={opt.v} checked={gender === opt.v} onClick={() => setValue("gender", opt.v as "male" | "female")}>
+                            <p style={{ textAlign: "center", fontWeight: 600, fontSize: "0.9375rem", color: gender === opt.v ? "#D4AF37" : "rgba(255,255,255,0.6)" }}>{opt.l}</p>
                           </RadioCard>
                         ))}
                       </div>
@@ -322,10 +331,10 @@ export default function ProgramAlPage() {
                       <label style={lbl}>Hedefiniz *</label>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.625rem" }}>
                         {GOAL_OPTIONS.map(opt => (
-                          <RadioCard key={opt.value} checked={watched.goal === opt.value} onClick={() => setValue("goal", opt.value as FormData["goal"])}>
+                          <RadioCard key={opt.value} checked={goal === opt.value} onClick={() => setValue("goal", opt.value as FormData["goal"])}>
                             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                               <span style={{ fontSize: "1.125rem" }}>{opt.emoji}</span>
-                              <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: watched.goal === opt.value ? "#D4AF37" : "rgba(255,255,255,0.65)" }}>{opt.label}</span>
+                              <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: goal === opt.value ? "#D4AF37" : "rgba(255,255,255,0.65)" }}>{opt.label}</span>
                             </div>
                           </RadioCard>
                         ))}
@@ -336,9 +345,9 @@ export default function ProgramAlPage() {
                       <label style={lbl}>Aktivite Seviyesi *</label>
                       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                         {ACTIVITY_OPTIONS.map(opt => (
-                          <RadioCard key={opt.value} checked={watched.activity_level === opt.value} onClick={() => setValue("activity_level", opt.value as FormData["activity_level"])}>
+                          <RadioCard key={opt.value} checked={activity_level === opt.value} onClick={() => setValue("activity_level", opt.value as FormData["activity_level"])}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <span style={{ fontSize: "0.875rem", fontWeight: 600, color: watched.activity_level === opt.value ? "#D4AF37" : "rgba(255,255,255,0.7)" }}>{opt.label}</span>
+                              <span style={{ fontSize: "0.875rem", fontWeight: 600, color: activity_level === opt.value ? "#D4AF37" : "rgba(255,255,255,0.7)" }}>{opt.label}</span>
                               <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.35)" }}>{opt.sub}</span>
                             </div>
                           </RadioCard>
@@ -350,9 +359,9 @@ export default function ProgramAlPage() {
                       <label style={lbl}>Antrenman Deneyimi *</label>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "0.625rem" }}>
                         {LEVEL_OPTIONS.map(opt => (
-                          <RadioCard key={opt.value} checked={watched.level === opt.value} onClick={() => setValue("level", opt.value as FormData["level"])}>
+                          <RadioCard key={opt.value} checked={level === opt.value} onClick={() => setValue("level", opt.value as FormData["level"])}>
                             <div style={{ textAlign: "center" }}>
-                              <p style={{ fontSize: "0.875rem", fontWeight: 600, color: watched.level === opt.value ? "#D4AF37" : "rgba(255,255,255,0.65)" }}>{opt.label}</p>
+                              <p style={{ fontSize: "0.875rem", fontWeight: 600, color: level === opt.value ? "#D4AF37" : "rgba(255,255,255,0.65)" }}>{opt.label}</p>
                               <p style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{opt.sub}</p>
                             </div>
                           </RadioCard>
@@ -365,7 +374,7 @@ export default function ProgramAlPage() {
                       <div style={{ display: "flex", gap: "0.5rem" }}>
                         {[1, 2, 3, 4, 5, 6, 7].map(d => (
                           <button key={d} type="button" onClick={() => setValue("weekly_days", d)}
-                            style={{ flex: 1, padding: "0.625rem 0", borderRadius: 10, fontSize: "0.875rem", fontWeight: 700, cursor: "pointer", border: `1px solid ${watched.weekly_days === d ? "rgba(212,175,55,0.5)" : "#2A2A2A"}`, background: watched.weekly_days === d ? "rgba(106,13,37,0.25)" : "#111", color: watched.weekly_days === d ? "#D4AF37" : "rgba(255,255,255,0.45)" }}>
+                            style={{ flex: 1, padding: "0.625rem 0", borderRadius: 10, fontSize: "0.875rem", fontWeight: 700, cursor: "pointer", border: `1px solid ${weekly_days === d ? "rgba(212,175,55,0.5)" : "#2A2A2A"}`, background: weekly_days === d ? "rgba(106,13,37,0.25)" : "#111", color: weekly_days === d ? "#D4AF37" : "rgba(255,255,255,0.45)" }}>
                             {d}
                           </button>
                         ))}
@@ -376,8 +385,8 @@ export default function ProgramAlPage() {
                       <label style={lbl}>Ekipman Durumu</label>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.625rem" }}>
                         {EQUIPMENT_OPTIONS.map(opt => (
-                          <RadioCard key={opt.value} checked={watched.equipment === opt.value} onClick={() => setValue("equipment", opt.value as FormData["equipment"])}>
-                            <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: watched.equipment === opt.value ? "#D4AF37" : "rgba(255,255,255,0.7)" }}>{opt.label}</p>
+                          <RadioCard key={opt.value} checked={equipment === opt.value} onClick={() => setValue("equipment", opt.value as FormData["equipment"])}>
+                            <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: equipment === opt.value ? "#D4AF37" : "rgba(255,255,255,0.7)" }}>{opt.label}</p>
                             <p style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{opt.sub}</p>
                           </RadioCard>
                         ))}
@@ -388,8 +397,8 @@ export default function ProgramAlPage() {
                       <label style={lbl}>Beslenme Tercihi</label>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.625rem" }}>
                         {DIET_OPTIONS.map(opt => (
-                          <RadioCard key={opt.value} checked={watched.diet_preference === opt.value} onClick={() => setValue("diet_preference", opt.value as FormData["diet_preference"])}>
-                            <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: watched.diet_preference === opt.value ? "#D4AF37" : "rgba(255,255,255,0.7)" }}>{opt.label}</p>
+                          <RadioCard key={opt.value} checked={diet_preference === opt.value} onClick={() => setValue("diet_preference", opt.value as FormData["diet_preference"])}>
+                            <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: diet_preference === opt.value ? "#D4AF37" : "rgba(255,255,255,0.7)" }}>{opt.label}</p>
                             <p style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{opt.sub}</p>
                           </RadioCard>
                         ))}
