@@ -3,6 +3,7 @@ import { Inter, Montserrat } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/lib/cartContext";
 import AnnouncementBar from "@/components/AnnouncementBar";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -62,6 +63,7 @@ export default function RootLayout({
           <AnnouncementBar />
           {children}
         </CartProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
