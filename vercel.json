@@ -1,1 +1,3 @@
-{\n  "version": 3,\n  "routes": [\n    {\n      "src": "/(.*)",\n      "dest": "index.js"\n    }\n  ]\n}
+{
+  "framework": "nextjs"
+}
