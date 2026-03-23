@@ -2,7 +2,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import Pricing from "@/components/sections/Pricing";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 import { getSettings, s } from "@/lib/settings";
 import { buildMetadata } from "@/lib/seo";
 
@@ -11,7 +11,7 @@ export async function generateMetadata() {
 }
 
 export default async function FiyatlarPage() {
-  const [settings, supabase] = await Promise.all([getSettings(), Promise.resolve(createClient())]);
+  const [settings, supabase] = await Promise.all([getSettings(), createClient()]);
   const { data: plans } = await supabase
     .from("pricing_plans")
     .select("*")
