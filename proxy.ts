@@ -36,20 +36,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/admin", request.url));
   }
 
-  // Dashboard: any logged-in user can access
   if (isDashboardRoute) return response;
 
   if (!isAdminLogin) {
-    // Check profiles table first
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", session.user.id)
       .single();
 
-    // If profiles table has no entry, auto-create it for the user
     if (profileError && profileError.code === "PGRST116") {
-      // No row found - insert with default 'user' role
       await supabase.from("profiles").upsert({ id: session.user.id, role: "user" }, { onConflict: "id" });
       return NextResponse.redirect(new URL("/", request.url));
     }
