@@ -100,8 +100,8 @@ export default function BlogClient({ posts, isPlaceholder }: { posts: Post[]; is
           {filtered.map((post) => (
             <Link
               key={post.id}
-              href={post.slug === "#" ? "/blog" : `/blog/${post.slug}`}
-              style={{ textDecoration: "none", display: "flex", flexDirection: "column", background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: "20px", overflow: "hidden" }}
+              href={post.slug && post.slug !== "#" ? `/blog/${post.slug}` : "#"}
+              style={{ textDecoration: "none", display: "flex", flexDirection: "column", background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: "20px", overflow: "hidden", cursor: post.slug && post.slug !== "#" ? "pointer" : "default" }}
               className="blog-card"
             >
               <style>{`.blog-card:hover { border-color: rgba(106,13,37,0.5) !important; } .blog-card:hover .blog-img { transform: scale(1.04); }`}</style>

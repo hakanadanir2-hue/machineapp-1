@@ -28,7 +28,21 @@ export default async function BlogPage() {
     .eq("published", true)
     .order("published_at", { ascending: false });
 
-  const posts = postsFromDb && postsFromDb.length > 0 ? postsFromDb : PLACEHOLDER_POSTS;
+  const posts = postsFromDb && postsFromDb.length > 0
+    ? postsFromDb.map((p: Record<string, unknown>) => ({
+        id: String(p.id ?? ""),
+        slug: String(p.slug ?? ""),
+        title: String(p.title ?? ""),
+        excerpt: p.excerpt ? String(p.excerpt) : undefined,
+        cover_image: p.cover_image ? String(p.cover_image) : undefined,
+        published_at: p.published_at ? String(p.published_at) : undefined,
+        tags: Array.isArray(p.tags)
+          ? p.tags
+          : typeof p.tags === "string" && p.tags
+          ? p.tags.split(",").map((t: string) => t.trim()).filter(Boolean)
+          : [],
+      }))
+    : PLACEHOLDER_POSTS;
   const isPlaceholder = !postsFromDb || postsFromDb.length === 0;
 
   return (
