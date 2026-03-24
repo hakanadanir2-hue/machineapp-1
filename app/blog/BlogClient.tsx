@@ -37,7 +37,7 @@ export default function BlogClient({ posts, isPlaceholder }: { posts: Post[]; is
 
   return (
     <div className="page-container" style={{ paddingTop: "3rem", paddingBottom: "5rem" }}>
-      {isPlaceholder && (
+      {isPlaceholder && process.env.NODE_ENV !== "production" && (
         <div style={{ marginBottom: "2rem", padding: "0.875rem 1.25rem", background: "rgba(212,175,55,0.07)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: "12px", display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <BookOpen style={{ width: "16px", height: "16px", color: "#D4AF37", flexShrink: 0 }} />
           <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.8125rem", margin: 0 }}>Örnek içerikler gösteriliyor. Admin panelinden gerçek yazılar ekleyebilirsiniz.</p>

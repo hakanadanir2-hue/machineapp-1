@@ -80,7 +80,7 @@ export default async function HizmetlerPage() {
                     </div>
 
                     <div className={`service-content-${i}`} style={{ padding: "2rem", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                      <h2 style={{ color: "#fff", fontWeight: 800, fontSize: "1.25rem", fontFamily: "var(--font-heading)", marginBottom: "0.4rem" }}>{s.title}</h2>
+                      <h2 style={{ color: "#fff", fontWeight: 800, fontSize: "1.25rem", fontFamily: "var(--font-heading)", marginBottom: "0.4rem" }}>{s.title || (s as unknown as {name?:string}).name || "Hizmet"}</h2>
                       {s.short_description && <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.8125rem", marginBottom: "0.75rem" }}>{s.short_description}</p>}
                       {s.long_description && <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.875rem", lineHeight: 1.7, marginBottom: "1.25rem" }}>{s.long_description}</p>}
 

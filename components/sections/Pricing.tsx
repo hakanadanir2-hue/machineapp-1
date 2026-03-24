@@ -306,7 +306,7 @@ export default function Pricing({ plans, whatsapp = "903742701455" }: PricingPro
             <p style={{ color: "#D4AF37", fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "0.625rem" }}>Kampanya</p>
             <h3 style={{ color: "#fff", fontWeight: 800, fontSize: "1.25rem", fontFamily: "var(--font-heading)", marginBottom: "0.5rem" }}>4 Al 5 Öde</h3>
             <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.875rem", lineHeight: 1.65, marginBottom: "0.75rem" }}>
-              4 aylık üyelik al, 5. ay <strong style={{ color: "#fff" }}>hediyemizden</strong> — sadece
+              4 aylık üyelik al, 5. ay <strong style={{ color: "#fff" }}>hediyemizden</strong> yararlansın — sadece <strong style={{ color: "#D4AF37", fontSize: "1.1em" }}>₺5.200</strong>!
             </p>
             <div style={{ marginBottom: "1.5rem" }}>
               <span style={{ fontSize: "2rem", fontWeight: 800, color: "#D4AF37", fontFamily: "var(--font-heading)" }}>₺5.200</span>

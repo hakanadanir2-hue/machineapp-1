@@ -10,7 +10,7 @@ const NAV_LINKS = [
   { href: "/hizmetler", label: "Hizmetler" },
   { href: "/fiyatlar", label: "Fiyatlar" },
   { href: "/magaza", label: "Mağaza" },
-  { href: "/program-al", label: "Beslenme & Fitness" },
+  { href: "/program-al", label: "Program Al" },
   { href: "/blog", label: "Blog" },
   { href: "/hakkimizda", label: "Hakkımızda" },
   { href: "/iletisim", label: "İletişim" },

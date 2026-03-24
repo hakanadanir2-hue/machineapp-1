@@ -83,6 +83,8 @@ export default function ProgramAlPage(){
   const [form,setForm]=useState<F>(INIT);
   const [errs,setErrs]=useState<Partial<Record<keyof F,string>>>({});
   const [loading,setLoading]=useState(false);
+  const [kvkk,setKvkk]=useState(false);
+  const [kvkkErr,setKvkkErr]=useState("");
   const [result,setResult]=useState<ProgramResult|null>(null);
   const [apiErr,setApiErr]=useState("");
 
@@ -105,6 +107,8 @@ export default function ProgramAlPage(){
   const next=async()=>{
     if(!validate())return;
     if(step<2){setStep(s=>s+1);return;}
+    if(!kvkk){setKvkkErr("Devam etmek için KVKK onayı gerekli");return;}
+    setKvkkErr("");
     setLoading(true);setApiErr("");
     try{
       const profile=buildProfile(form);
@@ -142,6 +146,17 @@ export default function ProgramAlPage(){
             <p style={{color:"#D4AF37",fontSize:"0.6875rem",fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:"0.75rem"}}>Kişisel Program</p>
             <h1 style={{fontSize:"clamp(1.75rem,5vw,2.75rem)",fontWeight:800,color:"#fff",fontFamily:"var(--font-heading)",marginBottom:"0.75rem"}}>Beslenme &amp; Fitness Programı</h1>
             <p style={{color:"rgba(255,255,255,0.45)",fontSize:"0.9375rem",maxWidth:"34rem",marginInline:"auto"}}>Yapay zeka ile tamamen kişiye özel — ücretsiz</p>
+
+            {/* Nasıl çalışır */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"0.75rem",maxWidth:"36rem",marginInline:"auto",marginTop:"1.5rem"}}>
+              {[["1","Formu Doldur","Kişisel bilgi ve hedeflerini gir"],["2","AI Analiz Eder","885 egzersizden kişisel program oluşturulur"],["3","Programı Al","E-posta veya WhatsApp ile iletilir"]].map(([n,t,d])=>(
+                <div key={n} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:12,padding:"0.875rem 0.625rem",textAlign:"center"}}>
+                  <div style={{width:28,height:28,borderRadius:"50%",background:"rgba(106,13,37,0.5)",border:"1px solid rgba(212,175,55,0.3)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 0.5rem",fontSize:"0.75rem",fontWeight:800,color:"#D4AF37"}}>{n}</div>
+                  <p style={{color:"#fff",fontWeight:700,fontSize:"0.8125rem",marginBottom:"0.25rem"}}>{t}</p>
+                  <p style={{color:"rgba(255,255,255,0.4)",fontSize:"0.7rem",lineHeight:1.5}}>{d}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -195,6 +210,15 @@ export default function ProgramAlPage(){
                   <div><label style={LBL}>Haftalık Antrenman Günü</label><div style={{display:"flex",gap:"0.4rem"}}>{[1,2,3,4,5,6,7].map(d=><button key={d} type="button" onClick={()=>set("weekly_days",d)} style={{flex:1,padding:"0.625rem 0",borderRadius:10,cursor:"pointer",border:`1px solid ${form.weekly_days===d?"rgba(212,175,55,0.5)":"#2A2A2A"}`,background:form.weekly_days===d?"rgba(106,13,37,0.3)":"#111",color:form.weekly_days===d?"#D4AF37":"rgba(255,255,255,0.4)",fontWeight:700,fontSize:"0.875rem"}}>{d}</button>)}</div></div>
                   <div><label style={LBL}>Ekipman</label><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.5rem"}}>{EQUIPS.map(o=><Chip key={o.v} active={form.equipment===o.v} onClick={()=>set("equipment",o.v as Equip)}>{o.l}</Chip>)}</div></div>
                   <div><label style={LBL}>Beslenme Tercihi</label><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.5rem"}}>{DIETS.map(o=><Chip key={o.v} active={form.diet_preference===o.v} onClick={()=>set("diet_preference",o.v as Diet)}>{o.l}</Chip>)}</div></div>
+
+                  <div style={{display:"flex",alignItems:"flex-start",gap:"0.625rem",padding:"0.875rem",background:"rgba(212,175,55,0.06)",border:"1px solid rgba(212,175,55,0.15)",borderRadius:10}}>
+                    <input type="checkbox" id="kvkk" checked={kvkk} onChange={e=>setKvkk(e.target.checked)} style={{marginTop:3,accentColor:"#6A0D25",width:16,height:16,flexShrink:0,cursor:"pointer"}}/>
+                    <label htmlFor="kvkk" style={{color:"rgba(255,255,255,0.6)",fontSize:"0.8rem",lineHeight:1.5,cursor:"pointer"}}>
+                      Kişisel verilerimin (ad, e-posta, sağlık bilgileri) Machine Gym tarafından program oluşturma amacıyla işlenmesini kabul ediyorum.{" "}
+                      <a href="/kvkk" target="_blank" style={{color:"#D4AF37",textDecoration:"underline"}}>KVKK Metni</a>
+                    </label>
+                  </div>
+                  {kvkkErr&&<p style={{color:"#f87171",fontSize:"0.75rem",marginTop:"0.25rem"}}>{kvkkErr}</p>}
                 </div>
               </div>
             )}

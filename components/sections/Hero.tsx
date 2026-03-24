@@ -154,7 +154,7 @@ export default function Hero({
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.3 }}
           style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", justifyContent: "center", alignItems: "center" }}
         >
-          <Link href="/deneme-antrenman" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.875rem 2rem", background: "#6A0D25", color: "#fff", fontWeight: 700, borderRadius: "12px", border: "1px solid rgba(212,175,55,0.35)", textDecoration: "none", fontSize: "0.9375rem" }}>
+          <Link href="/randevu" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.875rem 2rem", background: "#6A0D25", color: "#fff", fontWeight: 700, borderRadius: "12px", border: "1px solid rgba(212,175,55,0.35)", textDecoration: "none", fontSize: "0.9375rem" }}>
             {btn1} <ArrowRight style={{ width: "16px", height: "16px" }} />
           </Link>
           <a href={wa} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.875rem 2rem", background: "rgba(255,255,255,0.08)", color: "#fff", fontWeight: 500, borderRadius: "12px", border: "1px solid rgba(255,255,255,0.15)", textDecoration: "none", fontSize: "0.9375rem" }}>
