@@ -35,22 +35,13 @@ export default function Hero({
   const [mediaItems]    = useState<HeroMedia[]>(initialMedia);
   const [photoIndex, setPhotoIndex] = useState(0);
   const interval_       = initialInterval;
-  const [isMobile, setIsMobile] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Detect mobile
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768 || /iPhone|iPad|Android/i.test(navigator.userAgent));
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
 
   // Slideshow timer for photos
   const photos = mediaItems.filter((m) => m.type === "photo");
   const youtube = mediaItems.find((m) => m.type === "youtube");
-  const showYoutube = !!youtube && !isMobile;
+  const showYoutube = !!youtube; // mobil dahil her cihazda oynat
 
   useEffect(() => {
     if (photos.length <= 1) return;
@@ -93,17 +84,18 @@ export default function Hero({
         )}
       </AnimatePresence>
 
-      {/* ── YouTube iframe layer (desktop only) ── */}
+      {/* ── YouTube iframe layer (tüm cihazlar) ── */}
       {showYoutube && (
         <div style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none", overflow: "hidden" }}>
           <iframe
             src={youtube!.url}
-            allow="autoplay; encrypted-media; picture-in-picture"
+            allow="autoplay; muted; encrypted-media; picture-in-picture"
+            allowFullScreen
             style={{
               position: "absolute",
               top: "50%", left: "50%",
               transform: "translate(-50%, -50%)",
-              width: "177.78vh", /* 16:9 */
+              width: "177.78vh",
               height: "100vh",
               minWidth: "100%",
               minHeight: "56.25vw",

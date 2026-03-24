@@ -93,6 +93,8 @@ interface PricingProps {
 
 export default function Pricing({ plans, whatsapp = "903742701455" }: PricingProps) {
   const wa = `https://wa.me/${whatsapp}?text=${encodeURIComponent("Merhaba, üyelik ve fiyatlar hakkında bilgi almak istiyorum.")}`;
+  const waReceipt = (name: string, price: string) =>
+    `https://wa.me/${whatsapp}?text=${encodeURIComponent(`Merhaba, ${name} paketini (₺${price}) satın aldım. Ödeme dekontumu iletiyorum.`)}`;
 
   const activePlans = plans?.filter(p => p.is_active) ?? [];
   const dbFitness = activePlans.filter(p => p.category === "fitness");
@@ -180,10 +182,19 @@ export default function Pricing({ plans, whatsapp = "903742701455" }: PricingPro
                   background: plan.popular ? "#D4AF37" : "#2A2A2A",
                   color: plan.popular ? "#0B0B0B" : "#fff",
                   border: plan.popular ? "none" : "1px solid #3A3A3A",
+                  marginBottom: "0.5rem",
                 }}
               >
                 Üye Ol
               </Link>
+              <a
+                href={waReceipt(`${plan.name} Fitness`, plan.price)}
+                target="_blank" rel="noopener noreferrer"
+                style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"0.375rem", padding:"0.5rem", borderRadius:"10px", fontSize:"0.75rem", fontWeight:600, textDecoration:"none", background:"rgba(37,211,102,0.1)", color:"#4ade80", border:"1px solid rgba(37,211,102,0.2)" }}
+              >
+                <MessageCircle style={{ width:"13px", height:"13px" }} />
+                Ödeme Dekontu Gönder
+              </a>
             </motion.div>
           ))}
         </div>
@@ -220,7 +231,7 @@ export default function Pricing({ plans, whatsapp = "903742701455" }: PricingPro
                 </div>
                 <p style={{ color: p.popular ? "#D4AF37" : "rgba(255,255,255,0.4)", fontSize: "0.8125rem" }}>{p.per}</p>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <div style={{ display: "flex", flexDirection:"column", alignItems: "flex-end", gap: "0.5rem" }}>
                 <span style={{ color: "#fff", fontWeight: 800, fontSize: "1.25rem", fontFamily: "var(--font-heading)" }}>₺{p.price}</span>
                 <Link
                   href="/randevu"
@@ -228,6 +239,10 @@ export default function Pricing({ plans, whatsapp = "903742701455" }: PricingPro
                 >
                   Rezerve Et
                 </Link>
+                <a href={waReceipt(`PT ${p.name}`, p.price)} target="_blank" rel="noopener noreferrer"
+                  style={{ display:"flex", alignItems:"center", gap:"0.3rem", padding:"0.375rem 0.75rem", borderRadius:"8px", fontSize:"0.7rem", fontWeight:600, textDecoration:"none", background:"rgba(37,211,102,0.1)", color:"#4ade80", border:"1px solid rgba(37,211,102,0.2)", whiteSpace:"nowrap" }}>
+                  <MessageCircle style={{ width:12, height:12 }} /> Dekontu İlet
+                </a>
               </div>
             </motion.div>
           ))}
@@ -265,7 +280,7 @@ export default function Pricing({ plans, whatsapp = "903742701455" }: PricingPro
                 </div>
                 <p style={{ color: p.popular ? "#D4AF37" : "rgba(255,255,255,0.4)", fontSize: "0.8125rem" }}>{p.per}</p>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <div style={{ display: "flex", flexDirection:"column", alignItems: "flex-end", gap: "0.5rem" }}>
                 <span style={{ color: "#fff", fontWeight: 800, fontSize: "1.25rem", fontFamily: "var(--font-heading)" }}>₺{p.price}</span>
                 <Link
                   href="/randevu"
@@ -273,6 +288,10 @@ export default function Pricing({ plans, whatsapp = "903742701455" }: PricingPro
                 >
                   Rezerve Et
                 </Link>
+                <a href={waReceipt(`Boks ${p.name}`, p.price)} target="_blank" rel="noopener noreferrer"
+                  style={{ display:"flex", alignItems:"center", gap:"0.3rem", padding:"0.375rem 0.75rem", borderRadius:"8px", fontSize:"0.7rem", fontWeight:600, textDecoration:"none", background:"rgba(37,211,102,0.1)", color:"#4ade80", border:"1px solid rgba(37,211,102,0.2)", whiteSpace:"nowrap" }}>
+                  <MessageCircle style={{ width:12, height:12 }} /> Dekontu İlet
+                </a>
               </div>
             </motion.div>
           ))}
