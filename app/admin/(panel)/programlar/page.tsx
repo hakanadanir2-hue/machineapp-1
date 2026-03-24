@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { CheckCircle2, XCircle, Eye, ChevronDown, ChevronUp, User, Dumbbell, Apple } from "lucide-react";
 
@@ -95,7 +95,7 @@ const GOAL_LABELS: Record<string, string> = {
 };
 
 export default function AdminProgramlarPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [programs, setPrograms]     = useState<Program[]>([]);
   const [loading, setLoading]       = useState(true);
   const [filterStatus, setFilter]   = useState("all");
@@ -119,7 +119,7 @@ export default function AdminProgramlarPage() {
     const { data } = await q;
     setPrograms((data ?? []) as Program[]);
     setLoading(false);
-  }, [supabase, filterStatus]);
+  }, [filterStatus]);
 
   useEffect(() => { load(); }, [load]);
 

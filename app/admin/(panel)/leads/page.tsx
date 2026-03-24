@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Lead, LeadType, LeadStatus } from "@/types/leads";
 import { LEAD_TYPE_LABELS, LEAD_STATUS_CONFIG, LEAD_TYPE_COLORS } from "@/types/leads";
@@ -185,7 +185,7 @@ export default function LeadsPage() {
   const [selected, setSelected] = useState<Lead | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const PAGE_SIZE = 20;
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const searchRef = useRef<ReturnType<typeof globalThis.setTimeout> | undefined>(undefined);
 
   const load = useCallback(async () => {
@@ -205,7 +205,7 @@ export default function LeadsPage() {
       setTotal(count ?? 0);
     }
     setLoading(false);
-  }, [supabase, typeFilter, statusFilter, search, dateFrom, dateTo, page]);
+  }, [typeFilter, statusFilter, search, dateFrom, dateTo, page]);
 
   useEffect(() => {
     clearTimeout(searchRef.current);

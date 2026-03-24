@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Plus, Pencil, Trash2, X, GripVertical } from "lucide-react";
 
@@ -16,7 +16,7 @@ const EMPTY: Omit<Faq, "id"> = { question: "", answer: "", category: "genel", or
 const CATS = ["genel", "uyelik", "egitim", "odeme", "tesis"];
 
 export default function AdminSssPage() {
-  const sb = createClient();
+  const sb = useMemo(() => createClient(), []);
   const [faqs, setFaqs]     = useState<Faq[]>([]);
   const [loading, setLoad]  = useState(true);
   const [modal, setModal]   = useState(false);
@@ -33,7 +33,7 @@ export default function AdminSssPage() {
     const { data } = await sb.from("faqs").select("*").order("order_index");
     setFaqs((data ?? []) as Faq[]);
     setLoad(false);
-  }, [sb]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
