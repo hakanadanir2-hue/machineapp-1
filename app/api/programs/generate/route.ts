@@ -83,6 +83,24 @@ function formatExerciseList(exercises: ExerciseRow[]): string {
     .join("\n");
 }
 
+// Injury keyword → contraindication patterns to filter out
+const INJURY_FILTERS: Record<string, RegExp> = {
+  "fıtık":  /bel|deadlift|squat|good.morning|roman.dead|bent.over/i,
+  "fitık":  /bel|deadlift|squat|good.morning/i,
+  "diz":    /squat|lunge|leg.press|jump|step.up|knee/i,
+  "sırt":   /deadlift|good.morning|bent.over|roman.dead/i,
+  "omuz":   /overhead|shoulder.press|upright.row|arnold|lateral.raise/i,
+  "bilek":  /wrist|pushup|push.up|plank|curl.*bar/i,
+};
+
+function getInjuryRegexes(injuries?: string): RegExp[] {
+  if (!injuries) return [];
+  const lower = injuries.toLowerCase();
+  return Object.entries(INJURY_FILTERS)
+    .filter(([k]) => lower.includes(k))
+    .map(([, r]) => r);
+}
+
 async function fetchExercisesForProfile(
   admin: ReturnType<typeof createAdminClient>,
   profile: UserProfile
@@ -98,8 +116,17 @@ async function fetchExercisesForProfile(
 
   if (isHome) query = query.in("home_or_gym", ["home", "both"]);
 
-  const { data } = await query.limit(120);
-  const rows = (data ?? []) as ExerciseRow[];
+  const { data } = await query.limit(150);
+  let rows = (data ?? []) as ExerciseRow[];
+
+  // Filter out exercises that contraindicate user's injury
+  const injuryFilters = getInjuryRegexes(profile.injuries);
+  if (injuryFilters.length > 0) {
+    rows = rows.filter(ex => {
+      const nameAndNotes = `${ex.exercise_name} ${ex.contraindications ?? ""}`.toLowerCase();
+      return !injuryFilters.some(re => re.test(nameAndNotes));
+    });
+  }
 
   // Balance across categories so every muscle group is represented
   const byCategory: Record<string, ExerciseRow[]> = {};
@@ -110,7 +137,7 @@ async function fetchExercisesForProfile(
   }
 
   const balanced: ExerciseRow[] = [];
-  const perCat = Math.max(8, Math.floor(90 / Math.max(Object.keys(byCategory).length, 1)));
+  const perCat = Math.max(8, Math.floor(100 / Math.max(Object.keys(byCategory).length, 1)));
   for (const cat of Object.keys(byCategory)) {
     balanced.push(...byCategory[cat].slice(0, perCat));
   }

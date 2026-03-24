@@ -373,6 +373,11 @@ function WeekView({ weeks }: { weeks: WeekDetail[] }) {
                         {day.cooldown_notes && <div style={{ fontSize:11, color:"rgba(255,255,255,.3)", marginTop:4 }}>🧘 {day.cooldown_notes}</div>}
                       </div>
                     )}
+                    {!day.is_rest_day && day.exercises.length === 0 && (
+                      <div style={{ fontSize:11, color:"rgba(255,165,0,.5)", fontStyle:"italic", padding:"4px 0" }}>
+                        ⚠ Egzersizler kaydedilmemiş — bu program yeniden oluşturulmalı
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
