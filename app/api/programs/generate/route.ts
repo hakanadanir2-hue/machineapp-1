@@ -58,7 +58,7 @@ async function callOpenAI(apiKey: string, systemMsg: string, userMsg: string): P
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
     body: JSON.stringify({
       model:           "gpt-4o-mini",
-      max_tokens:      1800,
+      max_tokens:      3500,
       temperature:     0.7,
       messages:        [{ role: "system", content: systemMsg }, { role: "user", content: userMsg }],
       response_format: { type: "json_object" },
@@ -86,16 +86,90 @@ export async function POST(req: NextRequest) {
   const { bmi, category: bmiCategory } = calcBMI(p.weight_kg, p.height_cm);
   const injNote = injuryNote(p.injuries);
 
-  const systemPrompt = `Kişisel antrenör ve beslenme uzmanısın. SADECE JSON döndür.`;
-  const userPrompt = `${p.gender==="erkek"?"Erkek":"Kadın"}, ${p.age}y, ${p.height_cm}cm, ${p.weight_kg}kg, BMI:${bmi}
-Hedef: ${p.goal} | Seviye: ${p.fitness_level} | ${p.days_per_week} gün/hf, ${p.session_duration??60}dk
-Ekipman: ${p.available_equipment||"spor salonu"} | Beslenme: ${p.diet_preference||"standart"}
-${injNote ? `KISITLAMA: ${injNote}` : ""}
+  const systemPrompt = `Sen deneyimli bir kişisel antrenör ve spor beslenme uzmanısın. 
+Kullanıcının verdiği fiziksel ölçüler, hedef, seviye ve kısıtlamalara göre GERÇEK ve UYGULANABİLİR antrenman + beslenme programı hazırlarsın.
+KURALLAR:
+- Her antrenman günü MUTLAKA 5-7 egzersiz içersin (ısınma hariç)
+- Egzersizler Türkçe isimle yazılsın
+- Gerçekçi set/tekrar/dinlenme süreleri kullan
+- Beslenme planı kişinin kalorisine göre hesaplanmış olsun
+- SADECE geçerli JSON döndür, başka hiçbir şey yazma`;
 
-1 haftalık plan (${p.days_per_week} antrenman + ${7-p.days_per_week} dinlenme). Her antrenman günü 4-5 egzersiz.
+  const userPrompt = `Kullanıcı Profili:
+- Cinsiyet: ${p.gender === "erkek" ? "Erkek" : "Kadın"}
+- Yaş: ${p.age} | Boy: ${p.height_cm}cm | Kilo: ${p.weight_kg}kg | BMI: ${bmi} (${bmiCategory})
+- Hedef: ${p.goal}
+- Fitness Seviyesi: ${p.fitness_level}
+- Haftada ${p.days_per_week} gün antrenman, günlük ${p.session_duration ?? 60} dakika
+- Ekipman: ${p.available_equipment || "tam donanımlı spor salonu"}
+- Beslenme tercihi: ${p.diet_preference || "standart"}
+${p.injuries ? `- Sakatlık/Sağlık: ${p.injuries}` : ""}
+${injNote ? `- KISITLAMALAR (bunlara KESİNLİKLE uy): ${injNote}` : ""}
 
-{"title":"...","summary":"2 cümle","weeks":[{"week_number":1,"notes":"","days":[{"day_number":1,"day_name":"Pazartesi","focus":"Göğüs","is_rest_day":false,"warmup_notes":"5dk","cooldown_notes":"5dk","total_duration_min":55,"exercises":[{"name":"Bench Press","sets":3,"reps":"10-12","rest_seconds":60,"notes":""}],"notes":""},{"day_number":2,"day_name":"Salı","focus":"Dinlenme","is_rest_day":true,"exercises":[],"notes":""}]}],"nutrition":{"daily_calories":2200,"protein_g":165,"carb_g":220,"fat_g":73,"water_ml":2500,"meal_count":4,"meals":[{"name":"Kahvaltı","time":"07:00","foods":["Yulaf 80g","Yumurta 3"],"calories":550}],"general_notes":"..."}}`;
+GÖREV: 1 tam haftalık kişisel program oluştur.
+- ${p.days_per_week} antrenman günü, ${7 - p.days_per_week} dinlenme günü
+- Her antrenman gününde 5-7 egzersiz (ısınma hariç)
+- Her egzersiz için: Türkçe isim, set sayısı, tekrar aralığı, dinlenme süresi, kısa form notu
+- Antrenman günleri kas gruplarına göre dengeli dağıtılsın
 
+JSON ÇIKTI FORMATI (bu yapıyı TAM olarak kullan, eksik bırakma):
+{
+  "title": "Kişiselleştirilmiş [hedef] Programı",
+  "summary": "Bu programın amacını ve yapısını açıklayan 2-3 cümle.",
+  "weeks": [{
+    "week_number": 1,
+    "notes": "Bu hafta için genel notlar",
+    "days": [
+      {
+        "day_number": 1,
+        "day_name": "Pazartesi",
+        "focus": "Göğüs + Triseps",
+        "is_rest_day": false,
+        "warmup_notes": "5-10 dk hafif kardiyo, eklem hareketleri",
+        "cooldown_notes": "5-10 dk esneme, nefes egzersizleri",
+        "total_duration_min": 60,
+        "notes": "Bu günün özel notu",
+        "exercises": [
+          {"name": "Baribell Bench Press (Düz Baskı)", "sets": 4, "reps": "8-10", "rest_seconds": 90, "notes": "Kürek kemiklerini bir araya getir"},
+          {"name": "İnkline Dumbbell Press (Eğimli Dumbbell Baskı)", "sets": 3, "reps": "10-12", "rest_seconds": 75, "notes": "30-45 derece eğim"},
+          {"name": "Kablo Göğüs Flye (Çapraz Kablo)", "sets": 3, "reps": "12-15", "rest_seconds": 60, "notes": "Tam aralıkta hareket et"},
+          {"name": "Triceps Rope Pushdown (Halat Triceps)", "sets": 3, "reps": "12-15", "rest_seconds": 60, "notes": "Dirsekleri sabit tut"},
+          {"name": "Triceps Skull Crusher (Kafatası Kıran)", "sets": 3, "reps": "10-12", "rest_seconds": 60, "notes": "Kontrollü hareket"},
+          {"name": "Dips (Paralel Bar)", "sets": 3, "reps": "8-12", "rest_seconds": 75, "notes": "Öne doğru hafif eğil"}
+        ]
+      },
+      {
+        "day_number": 2,
+        "day_name": "Salı",
+        "focus": "Dinlenme",
+        "is_rest_day": true,
+        "warmup_notes": null,
+        "cooldown_notes": null,
+        "total_duration_min": null,
+        "notes": "Aktif dinlenme: yürüyüş veya hafif esneme",
+        "exercises": []
+      }
+    ]
+  }],
+  "nutrition": {
+    "daily_calories": 2400,
+    "protein_g": 180,
+    "carb_g": 240,
+    "fat_g": 80,
+    "water_ml": 3000,
+    "meal_count": 5,
+    "meals": [
+      {"name": "Kahvaltı", "time": "07:30", "foods": ["Yulaf ezmesi 80g", "Yumurta 3 adet", "Muz 1 adet", "Süt 200ml"], "calories": 620},
+      {"name": "Ara Öğün 1", "time": "10:30", "foods": ["Lor peyniri 150g", "Elma 1 adet"], "calories": 280},
+      {"name": "Öğle", "time": "13:00", "foods": ["Tavuk göğsü 200g (ızgara)", "Bulgur pilavı 150g", "Salata"], "calories": 680},
+      {"name": "Antrenman Sonrası", "time": "17:00", "foods": ["Whey protein 1 ölçek", "Muz 1 adet", "Süt 200ml"], "calories": 350},
+      {"name": "Akşam", "time": "20:00", "foods": ["Somon 180g", "Haşlanmış sebze 200g", "Zeytinyağı 1 yemek kaşığı"], "calories": 480}
+    ],
+    "general_notes": "Kişinin hedefine ve kalorisine göre özelleştirilmiş notlar buraya"
+  }
+}
+
+Tüm ${p.days_per_week} antrenman gününü doldur. Hiçbir antrenman günü 5'ten az egzersiz içermesin.`;
   // ── OpenAI call ──────────────────────────────────────────────────────────
   let raw = "";
   try {
