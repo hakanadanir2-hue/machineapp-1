@@ -1,6 +1,8 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import { getSettings, s } from "@/lib/settings";
+import LegalPageContent from "@/components/LegalPageContent";
 
 export const metadata = {
   title: "Kullanım Koşulları | Machine Gym",
@@ -8,7 +10,21 @@ export const metadata = {
     "Machine Gym web sitesi ve hizmetlerine ilişkin kullanım koşullarını okuyun. Siteyi kullanarak bu koşulları kabul etmiş sayılırsınız.",
 };
 
-export default function KosullarPage() {
+export default async function KosullarPage() {
+  const settings = await getSettings();
+  const dynamic = s(settings, "legal_kosullar");
+  if (dynamic) {
+    return (
+      <>
+        <Navbar />
+        <LegalPageContent title="Kullanım Koşulları" content={dynamic} />
+        <WhatsAppButton />
+        <Footer />
+      </>
+    );
+  }
+
+  // ── Fallback: hardcoded default ──────────────────────────────────────────
   const sectionStyle: React.CSSProperties = {
     marginBottom: "2.5rem",
   };

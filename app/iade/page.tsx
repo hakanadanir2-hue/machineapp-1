@@ -1,6 +1,8 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import { getSettings, s } from "@/lib/settings";
+import LegalPageContent from "@/components/LegalPageContent";
 
 export const metadata = {
   title: "İade ve Değişim Politikası | Machine Gym",
@@ -8,7 +10,21 @@ export const metadata = {
     "Machine Gym üyelik iadesi ve mağaza ürünleri için iade ve değişim politikamızı öğrenin. Sorularınız için WhatsApp üzerinden bize ulaşın.",
 };
 
-export default function IadePage() {
+export default async function IadePage() {
+  const settings = await getSettings();
+  const dynamic = s(settings, "legal_iade");
+  if (dynamic) {
+    return (
+      <>
+        <Navbar />
+        <LegalPageContent title="İade ve Değişim Politikası" content={dynamic} />
+        <WhatsAppButton />
+        <Footer />
+      </>
+    );
+  }
+
+  // ── Fallback: hardcoded default ──────────────────────────────────────────
   const sectionStyle: React.CSSProperties = {
     marginBottom: "2.5rem",
   };

@@ -1,6 +1,8 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import { getSettings, s } from "@/lib/settings";
+import LegalPageContent from "@/components/LegalPageContent";
 
 export const metadata = {
   title: "Gizlilik Politikası | Machine Gym",
@@ -8,7 +10,21 @@ export const metadata = {
     "Machine Gym olarak kişisel verilerinizin gizliliğini ve güvenliğini ciddiye alıyoruz. Gizlilik politikamızı okuyarak haklarınız hakkında bilgi edinin.",
 };
 
-export default function GizlilikPage() {
+export default async function GizlilikPage() {
+  const settings = await getSettings();
+  const dynamic = s(settings, "legal_gizlilik");
+  if (dynamic) {
+    return (
+      <>
+        <Navbar />
+        <LegalPageContent title="Gizlilik Politikası" content={dynamic} />
+        <WhatsAppButton />
+        <Footer />
+      </>
+    );
+  }
+
+  // ── Fallback: hardcoded default ──────────────────────────────────────────
   const sectionStyle: React.CSSProperties = {
     marginBottom: "2.5rem",
   };

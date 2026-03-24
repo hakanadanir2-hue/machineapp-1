@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Save, CheckCircle, Home, Info, Phone, AlignLeft, Search, Image } from "lucide-react";
+import { Save, CheckCircle, Home, Info, Phone, AlignLeft, Search, Image, FileText } from "lucide-react";
 import { useRef } from "react";
 
 const IS: React.CSSProperties = {
@@ -45,6 +45,7 @@ const TABS = [
   { id: "about", label: "Hakkımızda", icon: Info },
   { id: "contact", label: "İletişim", icon: Phone },
   { id: "footer", label: "Footer", icon: AlignLeft },
+  { id: "yasal", label: "Yasal", icon: FileText },
   { id: "media", label: "Görseller", icon: Image },
   { id: "seo", label: "SEO", icon: Search },
 ];
@@ -145,12 +146,20 @@ export default function ContentPage() {
 
       {/* About */}
       {tab === "about" && (
-        <Section title="Hakkımızda Sayfası" onSave={() => saveSection("about", ["about_description","about_members","about_years","about_trainers","about_area"])} saving={saving.about} saved={saved.about}>
-          <Field label="Açıklama Metni" value={g("about_description")} onChange={v => set("about_description", v)} multiline rows={4} placeholder="Machine Gym hakkında açıklama..." />
+        <Section title="Hakkımızda Sayfası" onSave={() => saveSection("about", ["about_description","about_members","about_years","about_trainers","about_area","about_story_1","about_story_2","about_story_3","about_image"])} saving={saving.about} saved={saved.about}>
+          <Field label="Kısa Açıklama (header altı)" value={g("about_description")} onChange={v => set("about_description", v)} multiline rows={3} placeholder="Bolu'nun en disiplinli fitness ve dövüş sporları salonu..." />
+          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "4px 0 16px" }} />
+          <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 11.5, fontWeight: 700, letterSpacing: "0.06em", marginBottom: 12 }}>HİKAYEMİZ — 3 Paragraf</p>
+          <Field label="1. Paragraf" value={g("about_story_1")} onChange={v => set("about_story_1", v)} multiline rows={3} placeholder="Machine Gym, Bolu'daki fitness ve dövüş sporları tutkunlarına..." />
+          <Field label="2. Paragraf" value={g("about_story_2")} onChange={v => set("about_story_2", v)} multiline rows={3} placeholder="10 yılı aşkın deneyimimizle..." />
+          <Field label="3. Paragraf" value={g("about_story_3")} onChange={v => set("about_story_3", v)} multiline rows={3} placeholder="Sertifikalı eğitmenlerimizle..." />
+          <Field label="Hakkımızda Fotoğraf URL" value={g("about_image")} onChange={v => set("about_image", v)} placeholder="https://... (Görseller sekmesinden URL kopyala)" />
+          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "4px 0 16px" }} />
+          <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 11.5, fontWeight: 700, letterSpacing: "0.06em", marginBottom: 12 }}>İSTATİSTİKLER (Ana sayfa + Hakkımızda)</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
             <Field label="Aktif Üye" value={g("about_members")} onChange={v => set("about_members", v)} placeholder="500+" />
-            <Field label="Yıl" value={g("about_years")} onChange={v => set("about_years", v)} placeholder="5+" />
-            <Field label="Eğitmen" value={g("about_trainers")} onChange={v => set("about_trainers", v)} placeholder="8" />
+            <Field label="Yıl" value={g("about_years")} onChange={v => set("about_years", v)} placeholder="10+" />
+            <Field label="Eğitmen" value={g("about_trainers")} onChange={v => set("about_trainers", v)} placeholder="3" />
             <Field label="Alan (m²)" value={g("about_area")} onChange={v => set("about_area", v)} placeholder="600" />
           </div>
         </Section>
@@ -193,6 +202,30 @@ export default function ContentPage() {
           <Field label="Telif Hakkı Metni" value={g("footer_copyright")} onChange={v => set("footer_copyright", v)} placeholder="© 2024 Machine Gym. Tüm hakları saklıdır." />
           <Field label="Logo URL" value={g("logo_url")} onChange={v => set("logo_url", v)} placeholder="https://... (boş bırakılırsa metin logo kullanılır)" />
         </Section>
+      )}
+
+      {/* Yasal */}
+      {tab === "yasal" && (
+        <>
+          <div style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 12, padding: "12px 16px", marginBottom: 20 }}>
+            <p style={{ color: "rgba(212,175,55,0.8)", fontSize: 12.5, margin: 0, lineHeight: 1.6 }}>
+              Bu alanlar boş bırakılırsa sayfalar varsayılan KVKK/gizlilik metinleriyle gösterilir. Kendi metninizi girerek özelleştirebilirsiniz.
+            </p>
+          </div>
+          <Section title="KVKK Aydınlatma Metni" onSave={() => saveSection("kvkk", ["legal_kvkk"])} saving={saving.kvkk} saved={saved.kvkk}>
+            <Field label="KVKK Metni (boş bırakılırsa varsayılan gösterilir)" value={g("legal_kvkk")} onChange={v => set("legal_kvkk", v)} multiline rows={14} placeholder="6698 Sayılı Kişisel Verilerin Korunması Kanunu kapsamında..." />
+            <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 11.5, marginTop: 8 }}>Her paragrafı boş satır ile ayırın. Alt başlık için satır başına ### koyun (örn: ### 1. Tanımlar)</p>
+          </Section>
+          <Section title="Gizlilik Politikası" onSave={() => saveSection("gizlilik", ["legal_gizlilik"])} saving={saving.gizlilik} saved={saved.gizlilik}>
+            <Field label="Gizlilik Politikası Metni" value={g("legal_gizlilik")} onChange={v => set("legal_gizlilik", v)} multiline rows={12} placeholder="Bu gizlilik politikası, Machine Gym tarafından..." />
+          </Section>
+          <Section title="Kullanım Koşulları" onSave={() => saveSection("kosullar", ["legal_kosullar"])} saving={saving.kosullar} saved={saved.kosullar}>
+            <Field label="Kullanım Koşulları Metni" value={g("legal_kosullar")} onChange={v => set("legal_kosullar", v)} multiline rows={12} placeholder="Sitemizi kullanarak aşağıdaki şartları kabul etmiş sayılırsınız..." />
+          </Section>
+          <Section title="İade & İptal Politikası" onSave={() => saveSection("iade", ["legal_iade"])} saving={saving.iade} saved={saved.iade}>
+            <Field label="İade ve İptal Politikası Metni" value={g("legal_iade")} onChange={v => set("legal_iade", v)} multiline rows={10} placeholder="Üyelik iptali, iade koşulları ve süreçleri..." />
+          </Section>
+        </>
       )}
 
       {/* Media */}
