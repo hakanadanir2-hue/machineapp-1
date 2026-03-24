@@ -20,6 +20,92 @@ export interface ProgramEmailData {
   bmiCategory?: string;
 }
 
+export interface AppointmentEmailData {
+  fullName: string;
+  email: string;
+  phone: string;
+  service: string;
+  date: string;
+  time: string;
+  notes?: string;
+}
+
+export async function sendAppointmentNotification(data: AppointmentEmailData): Promise<void> {
+  const transporter = getTransporter();
+  if (!transporter) return;
+
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.GMAIL_USER!;
+  const fromUser   = process.env.GMAIL_USER!;
+
+  await transporter.sendMail({
+    from:    `"Machine Gym" <${fromUser}>`,
+    to:      adminEmail,
+    subject: `📅 Yeni Randevu: ${data.fullName} — ${data.date} ${data.time}`,
+    html: `
+<!DOCTYPE html>
+<html lang="tr">
+<head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:560px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <div style="background:linear-gradient(135deg,#6A0D25,#8B1A35);padding:28px 32px;">
+      <h1 style="margin:0;color:#D4AF37;font-size:22px;font-weight:800;letter-spacing:1px;">MACHINE GYM</h1>
+      <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Yeni Randevu Bildirimi</p>
+    </div>
+    <div style="padding:28px 32px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid #eee;color:#888;font-size:13px;width:140px;">Ad Soyad</td>
+          <td style="padding:10px 0;border-bottom:1px solid #eee;color:#111;font-size:14px;font-weight:600;">${data.fullName}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid #eee;color:#888;font-size:13px;">Telefon</td>
+          <td style="padding:10px 0;border-bottom:1px solid #eee;color:#111;font-size:14px;">${data.phone}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid #eee;color:#888;font-size:13px;">E-posta</td>
+          <td style="padding:10px 0;border-bottom:1px solid #eee;color:#111;font-size:14px;">${data.email}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid #eee;color:#888;font-size:13px;">Hizmet</td>
+          <td style="padding:10px 0;border-bottom:1px solid #eee;color:#6A0D25;font-size:14px;font-weight:700;">${data.service}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid #eee;color:#888;font-size:13px;">Tarih</td>
+          <td style="padding:10px 0;border-bottom:1px solid #eee;color:#111;font-size:15px;font-weight:700;">${data.date}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid #eee;color:#888;font-size:13px;">Saat</td>
+          <td style="padding:10px 0;border-bottom:1px solid #eee;color:#111;font-size:15px;font-weight:700;">${data.time}</td>
+        </tr>
+        ${data.notes ? `
+        <tr>
+          <td style="padding:10px 0;color:#888;font-size:13px;vertical-align:top;">Not</td>
+          <td style="padding:10px 0;color:#555;font-size:13px;">${data.notes}</td>
+        </tr>` : ""}
+      </table>
+
+      <div style="margin-top:24px;padding:14px 18px;background:#fff8f0;border-left:4px solid #D4AF37;border-radius:0 8px 8px 0;">
+        <p style="margin:0;color:#6A0D25;font-size:13px;font-weight:600;">
+          Bu randevu machinegym.biz üzerinden alındı. Admin panelinden onaylayabilirsiniz.
+        </p>
+      </div>
+
+      <div style="margin-top:20px;text-align:center;">
+        <a href="https://machinegym.biz/admin/randevular"
+           style="display:inline-block;background:#6A0D25;color:#D4AF37;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:700;font-size:14px;">
+          Admin Paneline Git
+        </a>
+      </div>
+    </div>
+    <div style="background:#f9f9f9;padding:14px 32px;text-align:center;border-top:1px solid #eee;">
+      <p style="margin:0;color:#aaa;font-size:11px;">© ${new Date().getFullYear()} Machine Gym — Bolu</p>
+    </div>
+  </div>
+</body>
+</html>`,
+  });
+}
+
 export async function sendProgramEmail(data: ProgramEmailData): Promise<void> {
   const transporter = getTransporter();
   if (!transporter) return;
