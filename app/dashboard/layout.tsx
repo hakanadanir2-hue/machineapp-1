@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -16,20 +16,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router   = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
-  const [user, setUser]     = useState<{ email?: string; full_name?: string } | null>(null);
+  const [user, setUser]       = useState<{ email?: string; full_name?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const routerRef = useRef(router);
+  routerRef.current = router;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) { router.replace("/giris"); return; }
+      if (!session) { routerRef.current.replace("/giris"); return; }
       setUser({
         email:     session.user.email,
         full_name: session.user.user_metadata?.full_name,
       });
       setLoading(false);
     });
-  }, [router, supabase]);
+  }, []);
 
   async function signOut() {
     await supabase.auth.signOut();
