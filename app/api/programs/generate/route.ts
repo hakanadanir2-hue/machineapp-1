@@ -234,9 +234,6 @@ Tüm ${p.days_per_week} antrenman gününü doldur. Hiçbir antrenman günü 5't
     return NextResponse.json({ error: "AI geçersiz yanıt döndürdü. Tekrar deneyin." }, { status: 500 });
   }
 
-  // Build exercise_id lookup map for cross-referencing
-  const exIdMap = new Map(dbExercises.map(e => [e.exercise_name.toLowerCase(), e.id]));
-
   // ── DB saves (batched) ────────────────────────────────────────────────────
   const now  = new Date().toISOString();
   const week = prog.weeks[0];
@@ -274,23 +271,20 @@ Tüm ${p.days_per_week} antrenman gününü doldur. Hiçbir antrenman günü 5't
     if (d.is_rest_day || !d.exercises?.length) return [];
     const dayId = dayIdMap.get(d.day_number);
     if (!dayId) return [];
-    return d.exercises.map((ex, i) => {
-      const resolvedId = ex.exercise_id
-        ?? exIdMap.get(ex.name.toLowerCase())
-        ?? null;
-      return {
-        program_day_id: dayId,
-        exercise_id:    resolvedId,
-        exercise_name:  ex.name,
-        sets:           ex.sets,
-        reps:           ex.reps,
-        rest_seconds:   ex.rest_seconds ?? 60,
-        notes:          ex.notes ?? null,
-        order_index:    i,
-      };
-    });
+    return d.exercises.map((ex, i) => ({
+      program_day_id: dayId,
+      exercise_name:  ex.name,
+      sets:           ex.sets,
+      reps:           ex.reps,
+      rest_seconds:   ex.rest_seconds ?? 60,
+      notes:          ex.notes ?? null,
+      order_index:    i,
+    }));
   });
-  if (allExercises.length > 0) await admin.from("program_exercises").insert(allExercises);
+  if (allExercises.length > 0) {
+    const { error: exErr } = await admin.from("program_exercises").insert(allExercises);
+    if (exErr) console.error("Egzersiz kayıt hatası:", exErr.message);
+  }
 
   if (prog.nutrition) {
     await admin.from("nutrition_plans").insert({
