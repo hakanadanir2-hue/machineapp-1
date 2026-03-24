@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { DayPicker } from "react-day-picker";
+import "react-day-picker/style.css";
 import { tr } from "date-fns/locale";
 import { format } from "date-fns";
 import { Loader2, CheckCircle, Calendar, Clock, User, MessageCircle, Receipt } from "lucide-react";
@@ -159,15 +160,17 @@ export default function RandevuPage() {
           <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:"1.5rem", maxWidth:900, marginInline:"auto" }} className="randevu-grid">
             <style>{`
               @media(min-width:768px){ .randevu-grid{ grid-template-columns: 1fr 1fr !important; } }
-              .rdp { --rdp-accent-color: #6A0D25; color: white; margin: 0; }
-              .rdp-day_selected, .rdp-day_selected:hover { background-color: #6A0D25 !important; color: #D4AF37 !important; border-radius: 8px; }
-              .rdp-day:hover:not(.rdp-day_selected) { background-color: #2A2A2A; border-radius: 8px; }
-              .rdp-caption_label { color: #D4AF37; font-weight: 700; }
-              .rdp-nav_button { color: rgba(255,255,255,0.6); }
-              .rdp-nav_button:hover { color: #D4AF37; background: #2A2A2A; }
-              .rdp-head_cell { color: rgba(255,255,255,0.4); font-size: 0.75rem; }
-              .rdp-day_disabled { opacity: 0.25; }
-              .rdp-day_outside { opacity: 0.3; }
+              .rdp-root { --rdp-accent-color: #6A0D25; --rdp-accent-background-color: #6A0D25; color: white; margin: 0; font-family: inherit; }
+              .rdp-day_button { color: rgba(255,255,255,0.85); background: transparent; border: none; cursor: pointer; border-radius: 8px; width: 36px; height: 36px; }
+              .rdp-selected .rdp-day_button, .rdp-selected .rdp-day_button:hover { background-color: #6A0D25 !important; color: #D4AF37 !important; border-radius: 8px; font-weight: 700; }
+              .rdp-day_button:hover:not([disabled]) { background-color: #2A2A2A !important; border-radius: 8px; }
+              .rdp-caption_label { color: #D4AF37; font-weight: 700; font-size: 0.9375rem; }
+              .rdp-button_previous, .rdp-button_next { color: rgba(255,255,255,0.6); background: transparent; border: none; cursor: pointer; border-radius: 6px; padding: 4px; }
+              .rdp-button_previous:hover, .rdp-button_next:hover { color: #D4AF37; background: #2A2A2A; }
+              .rdp-weekday { color: rgba(255,255,255,0.4); font-size: 0.75rem; font-weight: 600; }
+              .rdp-disabled .rdp-day_button { opacity: 0.25; cursor: not-allowed; }
+              .rdp-outside .rdp-day_button { opacity: 0.3; }
+              .rdp-today .rdp-day_button { border: 1px solid rgba(212,175,55,0.4); }
             `}</style>
 
             {/* Takvim + Saat */}

@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendProgramEmail } from "@/lib/email";
-import crypto from "crypto";
 
-export const runtime     = "nodejs";
-export const maxDuration = 60;
+export const runtime     = "edge";
+export const maxDuration = 25;
 
 interface UserProfile {
   full_name?: string;
@@ -64,6 +62,15 @@ function injuryNote(injuries?: string) {
     .join("; ");
 }
 
+async function makeHash(data: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const buf = await crypto.subtle.digest("SHA-256", encoder.encode(data));
+  return Array.from(new Uint8Array(buf))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 32);
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null) as { profile: UserProfile; user_id?: string; email?: string } | null;
   if (!body?.profile) return NextResponse.json({ error: "Profile verisi eksik" }, { status: 400 });
@@ -76,9 +83,7 @@ export async function POST(req: NextRequest) {
   const admin  = createAdminClient();
   const { bmi, category: bmiCategory } = calcBMI(p.weight_kg, p.height_cm);
   const salt = Date.now().toString(36);
-  const hash = crypto.createHash("sha256")
-    .update(`${p.age}${p.gender}${p.weight_kg}${p.height_cm}${p.goal}${p.fitness_level}${p.days_per_week}${salt}`)
-    .digest("hex").slice(0, 32);
+  const hash = await makeHash(`${p.age}${p.gender}${p.weight_kg}${p.height_cm}${p.goal}${p.fitness_level}${p.days_per_week}${salt}`);
 
   const injNote = injuryNote(p.injuries);
 
@@ -187,25 +192,14 @@ JSON şeması (tam olarak bu yapıyı kullan):
   }
 
   const recipientEmail = body.email ?? p.email ?? null;
-  if (recipientEmail) {
-    sendProgramEmail({
-      to:             recipientEmail,
-      fullName:       p.full_name ?? "Değerli Üyemiz",
-      programTitle:   prog.title,
-      programSummary: prog.summary ?? "",
-      programId,
-      bmi,
-      bmiCategory,
-    }).catch(() => {});
-  }
 
   return NextResponse.json({
     success: true, programId,
     title: prog.title, summary: prog.summary,
     status: "pending", bmi, bmiCategory,
-    emailSent: !!recipientEmail,
+    emailSent: false,
     message: recipientEmail
-      ? "Programın hazırlandı! Detaylar e-posta adresine gönderildi."
+      ? "Programın hazırlandı! Admin onayı sonrası e-posta ile bilgilendirileceksin."
       : "Program oluşturuldu. Admin onayı bekleniyor.",
   });
 }
