@@ -75,8 +75,8 @@ export default function Navbar() {
                   key={l.href}
                   href={l.href}
                   style={{
-                    padding: "0.4rem 0.625rem",
-                    fontSize: "0.8125rem",
+                    padding: "0.35rem 0.45rem",
+                    fontSize: "0.75rem",
                     fontWeight: active ? 700 : 500,
                     borderRadius: "8px",
                     color: active ? "#D4AF37" : "rgba(255,255,255,0.7)",
@@ -84,6 +84,7 @@ export default function Navbar() {
                     textDecoration: "none",
                     whiteSpace: "nowrap",
                     transition: "all 0.2s",
+                    letterSpacing: "-0.01em",
                   }}
                 >
                   {l.label}
@@ -123,9 +124,10 @@ export default function Navbar() {
         </div>
 
         <style>{`
-          .desktop-nav { display: none; align-items: center; gap: 0.125rem; }
-          .desktop-right { display: none; align-items: center; }
+          .desktop-nav { display: none; align-items: center; gap: 0; flex-shrink: 1; }
+          .desktop-right { display: none; align-items: center; gap: 0.5rem; flex-shrink: 0; }
           .mobile-btn { display: flex; }
+          header { overflow: visible !important; }
           @media (min-width: 1024px) {
             .desktop-nav { display: flex !important; }
             .desktop-right { display: flex !important; }

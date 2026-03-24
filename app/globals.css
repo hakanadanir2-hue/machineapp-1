@@ -86,8 +86,12 @@ img {
 /* =============================================
    LAYOUT SAFETY — prevent horizontal overflow
    ============================================= */
-main, section, header, footer, nav {
+main, section, footer {
   max-width: 100vw;
+}
+
+header {
+  overflow: visible !important;
 }
 
 .grid > *, .flex > * {
