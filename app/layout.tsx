@@ -50,6 +50,50 @@ export const metadata: Metadata = {
   },
 };
 
+const localBusinessSchema = {
+  "@context": "https://schema.org",
+  "@type": ["LocalBusiness", "SportsActivityLocation"],
+  name: "Machine Gym",
+  alternateName: "Machine Gym Bolu",
+  description: "Bolu'nun en disiplinli fitness & boks salonu. Kişisel antrenör, boks, kickboks, muay thai dersleri. 600m² modern tesis.",
+  url: "https://www.machinegym.biz",
+  telephone: "+90 374 270 14 55",
+  email: "info@machinegym.biz",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "Tabaklar Mahallesi, Uygur Sokak No:3",
+    addressLocality: "Bolu Merkez",
+    addressRegion: "Bolu",
+    postalCode: "14300",
+    addressCountry: "TR",
+  },
+  geo: {
+    "@type": "GeoCoordinates",
+    latitude: 40.7395,
+    longitude: 31.6060,
+  },
+  openingHoursSpecification: [
+    { "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday","Tuesday","Wednesday","Thursday","Friday"], opens: "08:00", closes: "23:00" },
+    { "@type": "OpeningHoursSpecification", dayOfWeek: ["Saturday"], opens: "10:00", closes: "23:00" },
+    { "@type": "OpeningHoursSpecification", dayOfWeek: ["Sunday"], opens: "12:00", closes: "20:00" },
+  ],
+  sameAs: [
+    "https://www.instagram.com/gymachinebolu",
+    "https://www.facebook.com/MACHINEGYM",
+  ],
+  hasOfferCatalog: {
+    "@type": "OfferCatalog",
+    name: "Üyelik Paketleri",
+    itemListElement: [
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Fitness Üyeliği" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Personal Training" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Boks Dersi" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Kickboks" } },
+      { "@type": "Offer", itemOffered: { "@type": "Service", name: "Muay Thai" } },
+    ],
+  },
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -57,6 +101,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr" className={`${inter.variable} ${montserrat.variable}`}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
+        />
+      </head>
       <body className="min-h-screen bg-dark text-white antialiased">
         <CartProvider>
           <AnnouncementBar />
