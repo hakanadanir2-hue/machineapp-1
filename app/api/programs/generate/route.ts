@@ -21,7 +21,7 @@ interface UserProfile {
   medical_notes?: string;
 }
 
-interface AIExercise { name: string; sets: number; reps: string; rest_seconds: number; notes?: string; }
+interface AIExercise { name: string; exercise_id?: string; sets: number; reps: string; rest_seconds: number; notes?: string; }
 interface AIDay { day_number: number; day_name: string; focus: string; is_rest_day: boolean; exercises: AIExercise[]; warmup_notes?: string; cooldown_notes?: string; total_duration_min?: number; notes?: string; }
 interface AIMeal { name: string; time: string; foods: string[]; calories: number; }
 interface AIProgram {
@@ -29,6 +29,20 @@ interface AIProgram {
   summary: string;
   weeks: [{ week_number: 1; notes: string; days: AIDay[] }];
   nutrition: { daily_calories: number; protein_g: number; carb_g: number; fat_g: number; water_ml: number; meal_count: number; meals: AIMeal[]; general_notes: string; };
+}
+
+interface ExerciseRow {
+  id: string;
+  exercise_name: string;
+  category: string;
+  primary_muscle: string;
+  equipment: string;
+  difficulty: string;
+  default_sets: number | null;
+  default_reps: string | null;
+  rest_seconds: number | null;
+  coaching_notes: string | null;
+  contraindications: string | null;
 }
 
 function calcBMI(w: number, h: number) {
@@ -52,6 +66,58 @@ function injuryNote(injuries?: string) {
   return Object.entries(INJURY_MAP).filter(([k]) => lower.includes(k)).map(([, v]) => v).join("; ");
 }
 
+function mapDifficulty(level: string): string[] {
+  const l = level.toLowerCase();
+  if (l.includes("başlangıç") || l.includes("beginner"))        return ["beginner"];
+  if (l.includes("orta") || l.includes("intermediate"))         return ["beginner", "intermediate"];
+  if (l.includes("ileri") || l.includes("advanced"))            return ["intermediate", "advanced"];
+  if (l.includes("elit") || l.includes("expert"))               return ["advanced"];
+  return ["beginner", "intermediate"];
+}
+
+function formatExerciseList(exercises: ExerciseRow[]): string {
+  return exercises
+    .map(e =>
+      `[${e.id}] ${e.exercise_name} | kas:${e.primary_muscle || e.category} | ekipman:${e.equipment || "serbest"} | sets:${e.default_sets ?? 3} | reps:${e.default_reps ?? "10-12"} | dinlenme:${e.rest_seconds ?? 60}sn${e.contraindications ? ` | KONTRENDIKE:${e.contraindications}` : ""}`
+    )
+    .join("\n");
+}
+
+async function fetchExercisesForProfile(
+  admin: ReturnType<typeof createAdminClient>,
+  profile: UserProfile
+): Promise<ExerciseRow[]> {
+  const difficulties = mapDifficulty(profile.fitness_level ?? "orta");
+  const isHome = /ev|home/i.test(profile.available_equipment ?? "");
+
+  let query = admin
+    .from("exercises")
+    .select("id, exercise_name, category, primary_muscle, equipment, difficulty, default_sets, default_reps, rest_seconds, coaching_notes, contraindications")
+    .eq("is_active", true)
+    .in("difficulty", difficulties);
+
+  if (isHome) query = query.in("home_or_gym", ["home", "both"]);
+
+  const { data } = await query.limit(120);
+  const rows = (data ?? []) as ExerciseRow[];
+
+  // Balance across categories so every muscle group is represented
+  const byCategory: Record<string, ExerciseRow[]> = {};
+  for (const r of rows) {
+    const cat = r.category ?? "other";
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(r);
+  }
+
+  const balanced: ExerciseRow[] = [];
+  const perCat = Math.max(8, Math.floor(90 / Math.max(Object.keys(byCategory).length, 1)));
+  for (const cat of Object.keys(byCategory)) {
+    balanced.push(...byCategory[cat].slice(0, perCat));
+  }
+
+  return balanced.slice(0, 110);
+}
+
 async function callOpenAI(apiKey: string, systemMsg: string, userMsg: string): Promise<string> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method:  "POST",
@@ -66,7 +132,7 @@ async function callOpenAI(apiKey: string, systemMsg: string, userMsg: string): P
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => res.statusText);
-    throw new Error(`OpenAI API hatası (${res.status}): ${txt.slice(0, 120)}`);
+    throw new Error(`OpenAI API hatası (${res.status}): ${txt.slice(0, 200)}`);
   }
   const json = await res.json() as { choices: { message: { content: string } }[] };
   return json.choices?.[0]?.message?.content ?? "";
@@ -83,93 +149,46 @@ export async function POST(req: NextRequest) {
   if (!p.age || !p.height_cm || !p.weight_kg || !p.goal)
     return NextResponse.json({ error: "Yaş, boy, kilo ve hedef zorunludur" }, { status: 400 });
 
+  const admin = createAdminClient();
   const { bmi, category: bmiCategory } = calcBMI(p.weight_kg, p.height_cm);
   const injNote = injuryNote(p.injuries);
 
-  const systemPrompt = `Sen deneyimli bir kişisel antrenör ve spor beslenme uzmanısın. 
-Kullanıcının verdiği fiziksel ölçüler, hedef, seviye ve kısıtlamalara göre GERÇEK ve UYGULANABİLİR antrenman + beslenme programı hazırlarsın.
+  // ── Fetch exercises from DB ──────────────────────────────────────────────
+  const dbExercises = await fetchExercisesForProfile(admin, p);
+  const exerciseList = dbExercises.length > 0
+    ? formatExerciseList(dbExercises)
+    : "DB'de egzersiz bulunamadı, genel bilginle oluştur";
+
+  const hasDbExercises = dbExercises.length > 0;
+
+  const systemPrompt = `Sen deneyimli bir kişisel antrenör ve spor beslenme uzmanısın.
+Kullanıcının fiziksel ölçüleri, hedefi, seviyesi ve kısıtlamalarına göre GERÇEK ve UYGULANABİLİR antrenman + beslenme programı hazırlarsın.
+
 KURALLAR:
-- Her antrenman günü MUTLAKA 5-7 egzersiz içersin (ısınma hariç)
-- Egzersizler Türkçe isimle yazılsın
+${hasDbExercises ? `- SADECE aşağıdaki "Egzersiz Kütüphanesi"ndeki egzersizleri kullan. Listede olmayan egzersiz YAZMA.
+- Her egzersiz için listedeki [ID] değerini "exercise_id" alanına yaz (UUID formatında)` : "- Uygun egzersizler seç"}
+- Her antrenman günü MUTLAKA 5-7 egzersiz içersin
 - Gerçekçi set/tekrar/dinlenme süreleri kullan
 - Beslenme planı kişinin kalorisine göre hesaplanmış olsun
-- SADECE geçerli JSON döndür, başka hiçbir şey yazma`;
+- SADECE geçerli JSON döndür`;
 
   const userPrompt = `Kullanıcı Profili:
-- Cinsiyet: ${p.gender === "erkek" ? "Erkek" : "Kadın"}
-- Yaş: ${p.age} | Boy: ${p.height_cm}cm | Kilo: ${p.weight_kg}kg | BMI: ${bmi} (${bmiCategory})
-- Hedef: ${p.goal}
-- Fitness Seviyesi: ${p.fitness_level}
-- Haftada ${p.days_per_week} gün antrenman, günlük ${p.session_duration ?? 60} dakika
-- Ekipman: ${p.available_equipment || "tam donanımlı spor salonu"}
-- Beslenme tercihi: ${p.diet_preference || "standart"}
-${p.injuries ? `- Sakatlık/Sağlık: ${p.injuries}` : ""}
-${injNote ? `- KISITLAMALAR (bunlara KESİNLİKLE uy): ${injNote}` : ""}
+- Cinsiyet: ${p.gender === "erkek" ? "Erkek" : "Kadın"} | Yaş: ${p.age} | Boy: ${p.height_cm}cm | Kilo: ${p.weight_kg}kg | BMI: ${bmi} (${bmiCategory})
+- Hedef: ${p.goal} | Seviye: ${p.fitness_level} | ${p.days_per_week} gün/hafta | ${p.session_duration ?? 60}dk/seans
+- Ekipman: ${p.available_equipment || "tam donanımlı spor salonu"} | Beslenme: ${p.diet_preference || "standart"}
+${p.injuries ? `- Sakatlık: ${p.injuries}` : ""}${injNote ? ` → KISITLAMA: ${injNote}` : ""}
 
-GÖREV: 1 tam haftalık kişisel program oluştur.
-- ${p.days_per_week} antrenman günü, ${7 - p.days_per_week} dinlenme günü
-- Her antrenman gününde 5-7 egzersiz (ısınma hariç)
-- Her egzersiz için: Türkçe isim, set sayısı, tekrar aralığı, dinlenme süresi, kısa form notu
-- Antrenman günleri kas gruplarına göre dengeli dağıtılsın
+${hasDbExercises ? `EGZERSİZ KÜTÜPHANESİ (yalnızca bunlardan seç, ${dbExercises.length} egzersiz):
+${exerciseList}
 
-JSON ÇIKTI FORMATI (bu yapıyı TAM olarak kullan, eksik bırakma):
-{
-  "title": "Kişiselleştirilmiş [hedef] Programı",
-  "summary": "Bu programın amacını ve yapısını açıklayan 2-3 cümle.",
-  "weeks": [{
-    "week_number": 1,
-    "notes": "Bu hafta için genel notlar",
-    "days": [
-      {
-        "day_number": 1,
-        "day_name": "Pazartesi",
-        "focus": "Göğüs + Triseps",
-        "is_rest_day": false,
-        "warmup_notes": "5-10 dk hafif kardiyo, eklem hareketleri",
-        "cooldown_notes": "5-10 dk esneme, nefes egzersizleri",
-        "total_duration_min": 60,
-        "notes": "Bu günün özel notu",
-        "exercises": [
-          {"name": "Baribell Bench Press (Düz Baskı)", "sets": 4, "reps": "8-10", "rest_seconds": 90, "notes": "Kürek kemiklerini bir araya getir"},
-          {"name": "İnkline Dumbbell Press (Eğimli Dumbbell Baskı)", "sets": 3, "reps": "10-12", "rest_seconds": 75, "notes": "30-45 derece eğim"},
-          {"name": "Kablo Göğüs Flye (Çapraz Kablo)", "sets": 3, "reps": "12-15", "rest_seconds": 60, "notes": "Tam aralıkta hareket et"},
-          {"name": "Triceps Rope Pushdown (Halat Triceps)", "sets": 3, "reps": "12-15", "rest_seconds": 60, "notes": "Dirsekleri sabit tut"},
-          {"name": "Triceps Skull Crusher (Kafatası Kıran)", "sets": 3, "reps": "10-12", "rest_seconds": 60, "notes": "Kontrollü hareket"},
-          {"name": "Dips (Paralel Bar)", "sets": 3, "reps": "8-12", "rest_seconds": 75, "notes": "Öne doğru hafif eğil"}
-        ]
-      },
-      {
-        "day_number": 2,
-        "day_name": "Salı",
-        "focus": "Dinlenme",
-        "is_rest_day": true,
-        "warmup_notes": null,
-        "cooldown_notes": null,
-        "total_duration_min": null,
-        "notes": "Aktif dinlenme: yürüyüş veya hafif esneme",
-        "exercises": []
-      }
-    ]
-  }],
-  "nutrition": {
-    "daily_calories": 2400,
-    "protein_g": 180,
-    "carb_g": 240,
-    "fat_g": 80,
-    "water_ml": 3000,
-    "meal_count": 5,
-    "meals": [
-      {"name": "Kahvaltı", "time": "07:30", "foods": ["Yulaf ezmesi 80g", "Yumurta 3 adet", "Muz 1 adet", "Süt 200ml"], "calories": 620},
-      {"name": "Ara Öğün 1", "time": "10:30", "foods": ["Lor peyniri 150g", "Elma 1 adet"], "calories": 280},
-      {"name": "Öğle", "time": "13:00", "foods": ["Tavuk göğsü 200g (ızgara)", "Bulgur pilavı 150g", "Salata"], "calories": 680},
-      {"name": "Antrenman Sonrası", "time": "17:00", "foods": ["Whey protein 1 ölçek", "Muz 1 adet", "Süt 200ml"], "calories": 350},
-      {"name": "Akşam", "time": "20:00", "foods": ["Somon 180g", "Haşlanmış sebze 200g", "Zeytinyağı 1 yemek kaşığı"], "calories": 480}
-    ],
-    "general_notes": "Kişinin hedefine ve kalorisine göre özelleştirilmiş notlar buraya"
-  }
-}
+` : ""}GÖREV: ${p.days_per_week} antrenman + ${7 - p.days_per_week} dinlenme günlü 1 haftalık program oluştur.
+Her antrenman gününde 5-7 egzersiz. Kas gruplarını dengeli dağıt.
+
+JSON FORMATI:
+{"title":"...","summary":"2-3 cümle","weeks":[{"week_number":1,"notes":"...","days":[{"day_number":1,"day_name":"Pazartesi","focus":"Göğüs+Triseps","is_rest_day":false,"warmup_notes":"5dk kardiyo","cooldown_notes":"5dk esneme","total_duration_min":60,"notes":"...","exercises":[{"exercise_id":"UUID_BURAYA","name":"Bench Press","sets":4,"reps":"8-10","rest_seconds":90,"notes":"form notu"}]},{"day_number":2,"day_name":"Salı","focus":"Dinlenme","is_rest_day":true,"exercises":[],"warmup_notes":null,"cooldown_notes":null,"total_duration_min":null,"notes":"Aktif dinlenme"}]}],"nutrition":{"daily_calories":2200,"protein_g":165,"carb_g":220,"fat_g":73,"water_ml":2500,"meal_count":5,"meals":[{"name":"Kahvaltı","time":"07:30","foods":["Yulaf 80g","Yumurta 3"],"calories":550}],"general_notes":"..."}}
 
 Tüm ${p.days_per_week} antrenman gününü doldur. Hiçbir antrenman günü 5'ten az egzersiz içermesin.`;
+
   // ── OpenAI call ──────────────────────────────────────────────────────────
   let raw = "";
   try {
@@ -188,10 +207,12 @@ Tüm ${p.days_per_week} antrenman gününü doldur. Hiçbir antrenman günü 5't
     return NextResponse.json({ error: "AI geçersiz yanıt döndürdü. Tekrar deneyin." }, { status: 500 });
   }
 
-  // ── DB saves (batched — 4 queries instead of 14+) ───────────────────────
-  const admin = createAdminClient();
-  const now   = new Date().toISOString();
-  const week  = prog.weeks[0];
+  // Build exercise_id lookup map for cross-referencing
+  const exIdMap = new Map(dbExercises.map(e => [e.exercise_name.toLowerCase(), e.id]));
+
+  // ── DB saves (batched) ────────────────────────────────────────────────────
+  const now  = new Date().toISOString();
+  const week = prog.weeks[0];
 
   const { data: saved, error: progErr } = await admin.from("programs").insert({
     user_id: body.user_id ?? null, title: prog.title, summary: prog.summary,
@@ -210,7 +231,6 @@ Tüm ${p.days_per_week} antrenman gününü doldur. Hiçbir antrenman günü 5't
     .select("id").single();
   const weekId = weekRow?.id as string | null ?? null;
 
-  // Batch insert all 7 days at once
   const { data: dayRows } = await admin.from("program_days")
     .insert(week.days.map(d => ({
       program_id: programId, week_id: weekId, week_number: 1,
@@ -223,16 +243,25 @@ Tüm ${p.days_per_week} antrenman gününü doldur. Hiçbir antrenman günü 5't
 
   const dayIdMap = new Map<number, string>((dayRows ?? []).map(r => [r.day_number as number, r.id as string]));
 
-  // Batch insert ALL exercises at once
   const allExercises = week.days.flatMap(d => {
     if (d.is_rest_day || !d.exercises?.length) return [];
     const dayId = dayIdMap.get(d.day_number);
     if (!dayId) return [];
-    return d.exercises.map((ex, i) => ({
-      program_day_id: dayId, exercise_name: ex.name, sets: ex.sets,
-      reps: ex.reps, rest_seconds: ex.rest_seconds ?? 60,
-      notes: ex.notes ?? null, order_index: i,
-    }));
+    return d.exercises.map((ex, i) => {
+      const resolvedId = ex.exercise_id
+        ?? exIdMap.get(ex.name.toLowerCase())
+        ?? null;
+      return {
+        program_day_id: dayId,
+        exercise_id:    resolvedId,
+        exercise_name:  ex.name,
+        sets:           ex.sets,
+        reps:           ex.reps,
+        rest_seconds:   ex.rest_seconds ?? 60,
+        notes:          ex.notes ?? null,
+        order_index:    i,
+      };
+    });
   });
   if (allExercises.length > 0) await admin.from("program_exercises").insert(allExercises);
 
@@ -249,6 +278,7 @@ Tüm ${p.days_per_week} antrenman gününü doldur. Hiçbir antrenman günü 5't
   return NextResponse.json({
     success: true, programId, title: prog.title, summary: prog.summary,
     status: "pending", bmi, bmiCategory,
+    exercisesFromDb: hasDbExercises ? dbExercises.length : 0,
     message: "Programın hazırlandı! Admin onayı sonrası sana iletilecek.",
   });
 }
