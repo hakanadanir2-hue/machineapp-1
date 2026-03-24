@@ -4,6 +4,7 @@ import "./globals.css";
 import { CartProvider } from "@/lib/cartContext";
 import AnnouncementBar from "@/components/AnnouncementBar";
 import { getSettings, s } from "@/lib/settings";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -111,6 +112,7 @@ export default async function RootLayout({
           <AnnouncementBar />
           {children}
         </CartProvider>
+        <Analytics />
       </body>
     </html>
   );
