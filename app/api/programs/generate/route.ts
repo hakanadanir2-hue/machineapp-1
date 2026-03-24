@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export const runtime     = "edge";
-export const maxDuration = 25;
+export const runtime     = "nodejs";
+export const maxDuration = 60;
 
 interface UserProfile {
   full_name?: string;
