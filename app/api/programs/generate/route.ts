@@ -27,7 +27,7 @@ interface AIMeal { name: string; time: string; foods: string[]; calories: number
 interface AIProgram {
   title: string;
   summary: string;
-  weeks: { week_number: number; notes: string; days: AIDay[] }[];
+  weeks: [{ week_number: 1; notes: string; days: AIDay[] }];
   nutrition: { daily_calories: number; protein_g: number; carb_g: number; fat_g: number; water_ml: number; meal_count: number; meals: AIMeal[]; general_notes: string; };
 }
 
@@ -98,48 +98,6 @@ function getInjuryRegexes(injuries?: string): RegExp[] {
   return Object.entries(INJURY_FILTERS)
     .filter(([k]) => lower.includes(k))
     .map(([, r]) => r);
-}
-
-// Progressive overload helpers
-function progressReps(reps: string, add: number): string {
-  const rangeMatch = reps.match(/^(\d+)-(\d+)$/);
-  if (rangeMatch) return `${+rangeMatch[1] + add}-${+rangeMatch[2] + add}`;
-  const singleMatch = reps.match(/^(\d+)(\+?)$/);
-  if (singleMatch) return `${+singleMatch[1] + add}${singleMatch[2]}`;
-  return reps;
-}
-
-interface WeekConfig {
-  weekNum: number;
-  notes: string;
-  setsAdj: number;
-  repsAdj: number;
-  isDeload: boolean;
-}
-
-function buildWeeksFromBase(baseWeek: AIProgram["weeks"][0]): { weekNum: number; notes: string; days: AIDay[] }[] {
-  const configs: WeekConfig[] = [
-    { weekNum: 1, notes: baseWeek.notes ?? "Temel hafta — hareketleri öğren, formu oturt", setsAdj: 0, repsAdj: 0, isDeload: false },
-    { weekNum: 2, notes: "İlerleme haftası — tekrar sayısı artırıldı (+2 tekrar)", setsAdj: 0, repsAdj: 2, isDeload: false },
-    { weekNum: 3, notes: "Yoğunluk haftası — set sayısı artırıldı (+1 set)", setsAdj: 1, repsAdj: 2, isDeload: false },
-    { weekNum: 4, notes: "Deload haftası — yük azaltıldı, form ve teknik odaklı çalış", setsAdj: -1, repsAdj: 0, isDeload: true },
-  ];
-
-  return configs.map(cfg => ({
-    weekNum: cfg.weekNum,
-    notes: cfg.notes,
-    days: baseWeek.days.map(day => ({
-      ...day,
-      exercises: day.is_rest_day ? day.exercises : day.exercises.map(ex => {
-        const sets = Math.max(2, ex.sets + cfg.setsAdj);
-        const reps = cfg.repsAdj !== 0 ? progressReps(ex.reps, cfg.repsAdj) : ex.reps;
-        const notes = cfg.isDeload
-          ? (ex.notes ? `${ex.notes} — hafif ağırlık, form odaklı` : "Hafif ağırlık, form odaklı")
-          : ex.notes;
-        return { ...ex, sets, reps, notes };
-      }),
-    })),
-  }));
 }
 
 async function fetchExercisesForProfile(
@@ -227,13 +185,13 @@ export async function POST(req: NextRequest) {
   const hasDbExercises = dbExercises.length > 0;
 
   const systemPrompt = `Sen deneyimli bir kişisel antrenör ve spor beslenme uzmanısın.
-Kullanıcının fiziksel ölçüleri, hedefi, seviyesi ve kısıtlamalarına göre GERÇEK ve UYGULANABİLİR antrenman + beslenme programının TEMEL HAFTASINI hazırlarsın.
+Kullanıcının fiziksel ölçüleri, hedefi, seviyesi ve kısıtlamalarına göre GERÇEK ve UYGULANABİLİR antrenman + beslenme programı hazırlarsın.
 
 KURALLAR:
 ${hasDbExercises ? `- SADECE aşağıdaki "Egzersiz Kütüphanesi"ndeki egzersizleri kullan. Listede olmayan egzersiz YAZMA.
 - Her egzersiz için listedeki [ID] değerini "exercise_id" alanına yaz (UUID formatında)` : "- Uygun egzersizler seç"}
 - Her antrenman günü MUTLAKA 5-7 egzersiz içersin
-- Gerçekçi set/tekrar/dinlenme süreleri kullan (hafta 1 için başlangıç ağırlıkları)
+- Gerçekçi set/tekrar/dinlenme süreleri kullan
 - Beslenme planı kişinin kalorisine göre hesaplanmış olsun
 - SADECE geçerli JSON döndür`;
 
@@ -246,8 +204,7 @@ ${p.injuries ? `- Sakatlık: ${p.injuries}` : ""}${injNote ? ` → KISITLAMA: ${
 ${hasDbExercises ? `EGZERSİZ KÜTÜPHANESİ (yalnızca bunlardan seç, ${dbExercises.length} egzersiz):
 ${exerciseList}
 
-` : ""}GÖREV: ${p.days_per_week} antrenman + ${7 - p.days_per_week} dinlenme günlü TEMEL HAFTA programını oluştur.
-Bu ilk hafta şablonu olarak kullanılacak; hafta 2'de +2 tekrar, hafta 3'te +1 set, hafta 4'te deload uygulanacak.
+` : ""}GÖREV: ${p.days_per_week} antrenman + ${7 - p.days_per_week} dinlenme günlü 1 haftalık program oluştur.
 Her antrenman gününde 5-7 egzersiz. Kas gruplarını dengeli dağıt.
 
 JSON FORMATI:
@@ -272,17 +229,14 @@ Tüm ${p.days_per_week} antrenman gününü doldur. Hiçbir antrenman günü 5't
     return NextResponse.json({ error: "AI geçersiz yanıt döndürdü. Tekrar deneyin." }, { status: 500 });
   }
 
-  // Build 4 weeks with progressive overload
-  const allWeeks = buildWeeksFromBase(prog.weeks[0]);
-
-  // ── DB saves (batched for all 4 weeks) ───────────────────────────────────
-  const now = new Date().toISOString();
+  const now  = new Date().toISOString();
+  const week = prog.weeks[0];
 
   const { data: saved, error: progErr } = await admin.from("programs").insert({
     user_id:         body.user_id ?? null,
-    title:           prog.title,
+    title:           "Fitness ve Beslenme Programı",
     summary:         prog.summary,
-    duration_weeks:  4,
+    duration_weeks:  1,
     days_per_week:   p.days_per_week,
     goal:            p.goal,
     fitness_level:   p.fitness_level,
@@ -299,96 +253,66 @@ Tüm ${p.days_per_week} antrenman gününü doldur. Hiçbir antrenman günü 5't
 
   const programId = saved.id as string;
 
-  // Insert all 4 weeks at once
-  const { data: weekRows, error: weekErr } = await admin.from("program_weeks")
-    .insert(allWeeks.map(w => ({
-      program_id:  programId,
-      week_number: w.weekNum,
-      notes:       w.notes,
+  const { data: weekRow } = await admin.from("program_weeks")
+    .insert({ program_id: programId, week_number: 1, notes: week.notes ?? "" })
+    .select("id").single();
+  const weekId = weekRow?.id as string | null ?? null;
+
+  const { data: dayRows } = await admin.from("program_days")
+    .insert(week.days.map(d => ({
+      program_id: programId, week_id: weekId, week_number: 1,
+      day_number: d.day_number, day_name: d.day_name, focus: d.focus,
+      is_rest_day: d.is_rest_day ?? false,
+      warmup_notes: d.warmup_notes ?? null, cooldown_notes: d.cooldown_notes ?? null,
+      total_duration_min: d.total_duration_min ?? null, notes: d.notes ?? null,
     })))
-    .select("id, week_number");
+    .select("id, day_number");
 
-  if (weekErr || !weekRows?.length) {
-    console.error("Hafta kayıt hatası:", weekErr?.message);
-  }
+  const dayIdMap = new Map<number, string>((dayRows ?? []).map(r => [r.day_number as number, r.id as string]));
 
-  const weekIdMap = new Map<number, string>((weekRows ?? []).map(r => [r.week_number as number, r.id as string]));
+  const allExercises = week.days.flatMap(d => {
+    if (d.is_rest_day || !d.exercises?.length) return [];
+    const dayId = dayIdMap.get(d.day_number);
+    if (!dayId) return [];
+    return d.exercises.map((ex, i) => ({
+      program_day_id: dayId,
+      exercise_name:  ex.name,
+      sets:           ex.sets,
+      reps:           ex.reps,
+      rest_seconds:   ex.rest_seconds ?? 60,
+      notes:          ex.notes ?? null,
+      order_index:    i,
+    }));
+  });
 
-  // Insert all days for all 4 weeks at once
-  const allDayInserts = allWeeks.flatMap(w =>
-    w.days.map(d => ({
-      program_id:         programId,
-      week_id:            weekIdMap.get(w.weekNum) ?? null,
-      week_number:        w.weekNum,
-      day_number:         d.day_number,
-      day_name:           d.day_name,
-      focus:              d.focus,
-      is_rest_day:        d.is_rest_day ?? false,
-      warmup_notes:       d.warmup_notes ?? null,
-      cooldown_notes:     d.cooldown_notes ?? null,
-      total_duration_min: d.total_duration_min ?? null,
-      notes:              d.notes ?? null,
-    }))
-  );
-
-  const { data: dayRows, error: dayErr } = await admin.from("program_days")
-    .insert(allDayInserts)
-    .select("id, week_number, day_number");
-
-  if (dayErr) console.error("Gün kayıt hatası:", dayErr.message);
-
-  // Map (week_number, day_number) → day_id
-  const dayIdMap = new Map<string, string>(
-    (dayRows ?? []).map(r => [`${r.week_number}-${r.day_number}`, r.id as string])
-  );
-
-  // Insert all exercises for all 4 weeks at once
-  const allExerciseInserts = allWeeks.flatMap(w =>
-    w.days.flatMap(d => {
-      if (d.is_rest_day || !d.exercises?.length) return [];
-      const dayId = dayIdMap.get(`${w.weekNum}-${d.day_number}`);
-      if (!dayId) return [];
-      return d.exercises.map((ex, i) => ({
-        program_day_id: dayId,
-        exercise_name:  ex.name,
-        sets:           ex.sets,
-        reps:           ex.reps,
-        rest_seconds:   ex.rest_seconds ?? 60,
-        notes:          ex.notes ?? null,
-        order_index:    i,
-      }));
-    })
-  );
-
-  if (allExerciseInserts.length > 0) {
-    const { error: exErr } = await admin.from("program_exercises").insert(allExerciseInserts);
+  if (allExercises.length > 0) {
+    const { error: exErr } = await admin.from("program_exercises").insert(allExercises);
     if (exErr) console.error("Egzersiz kayıt hatası:", exErr.message);
   }
 
   if (prog.nutrition) {
     await admin.from("nutrition_plans").insert({
-      program_id:    programId,
+      program_id:     programId,
       daily_calories: prog.nutrition.daily_calories,
-      protein_g:     prog.nutrition.protein_g,
-      carb_g:        prog.nutrition.carb_g,
-      fat_g:         prog.nutrition.fat_g,
-      water_ml:      prog.nutrition.water_ml ?? 2500,
-      meal_count:    prog.nutrition.meal_count,
-      meals:         prog.nutrition.meals,
-      general_notes: prog.nutrition.general_notes,
+      protein_g:      prog.nutrition.protein_g,
+      carb_g:         prog.nutrition.carb_g,
+      fat_g:          prog.nutrition.fat_g,
+      water_ml:       prog.nutrition.water_ml ?? 2500,
+      meal_count:     prog.nutrition.meal_count,
+      meals:          prog.nutrition.meals,
+      general_notes:  prog.nutrition.general_notes,
     });
   }
 
   return NextResponse.json({
-    success:        true,
+    success:         true,
     programId,
-    title:          prog.title,
-    summary:        prog.summary,
-    status:         "pending",
+    title:           "Fitness ve Beslenme Programı",
+    summary:         prog.summary,
+    status:          "pending",
     bmi,
     bmiCategory,
-    durationWeeks:  4,
     exercisesFromDb: hasDbExercises ? dbExercises.length : 0,
-    message:        "4 haftalık programın hazırlandı! Admin onayı sonrası sana iletilecek.",
+    message:         "Programın hazırlandı! Admin onayı sonrası sana iletilecek.",
   });
 }
