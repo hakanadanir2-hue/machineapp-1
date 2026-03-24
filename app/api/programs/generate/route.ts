@@ -239,10 +239,19 @@ Tüm ${p.days_per_week} antrenman gününü doldur. Hiçbir antrenman günü 5't
   const week = prog.weeks[0];
 
   const { data: saved, error: progErr } = await admin.from("programs").insert({
-    user_id: body.user_id ?? null, title: prog.title, summary: prog.summary,
-    duration_weeks: 4, days_per_week: p.days_per_week, goal: p.goal,
-    fitness_level: p.fitness_level, status: "pending", ai_model: "gpt-4o-mini",
-    created_at: now, updated_at: now,
+    user_id:         body.user_id ?? null,
+    title:           prog.title,
+    summary:         prog.summary,
+    duration_weeks:  4,
+    days_per_week:   p.days_per_week,
+    goal:            p.goal,
+    fitness_level:   p.fitness_level,
+    status:          "pending",
+    ai_model:        "gpt-4o-mini",
+    requester_email: body.email ?? p.email ?? null,
+    requester_name:  p.full_name ?? null,
+    created_at:      now,
+    updated_at:      now,
   }).select("id").single();
 
   if (progErr || !saved)
