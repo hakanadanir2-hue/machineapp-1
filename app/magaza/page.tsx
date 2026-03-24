@@ -10,15 +10,12 @@ export default async function MagazaPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("products")
-    .select("id,name,slug,price,discounted_price,category,stock,is_featured,is_active,images")
+    .select("id,name,slug,price,discounted_price,category,stock,is_featured,image_url")
     .eq("is_active", true)
     .order("is_featured", { ascending: false })
     .order("created_at", { ascending: false });
 
-  const products = (data ?? []).map((p) => ({
-    ...p,
-    image_url: Array.isArray(p.images) && p.images.length > 0 ? String(p.images[0]) : null,
-  }));
+  const products = data ?? [];
 
   return (
     <>
