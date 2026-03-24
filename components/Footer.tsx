@@ -1,22 +1,21 @@
 import Link from "next/link";
 import { Dumbbell, MapPin, Phone, Mail, Instagram, Clock, MessageCircle, Facebook } from "lucide-react";
-import { getSettings, s } from "@/lib/settings";
 
-export default async function Footer() {
-  const settings = await getSettings();
+const DEFAULTS = {
+  whatsapp:  "903742701455",
+  phone:     "0374 270 14 55",
+  email:     "info@machinegym.biz",
+  address:   "Tabaklar Mah. / Uygur Sokak NO:3, Bolu Merkez",
+  instagram: "https://instagram.com/gymachinebolu",
+  facebook:  "https://facebook.com/machinegym",
+  weekday:   "08:00 – 01:00",
+  saturday:  "10:00 – 01:00",
+  sunday:    "12:00 – 20:00",
+};
+
+export default function Footer() {
   const year = new Date().getFullYear();
-
-  const whatsapp = s(settings, "contact_whatsapp", "903742701455");
-  const phone = s(settings, "contact_phone", "03742701455");
-  const email = s(settings, "contact_email", "info@machinegym.com.tr");
-  const address = s(settings, "contact_address", "Tabaklar Mah. / Uygur Sokak NO:3, Bolu Merkez");
-  const instagram = s(settings, "social_instagram", "https://instagram.com/gymachinebolu");
-  const facebook = s(settings, "social_facebook", "https://facebook.com/machinegym");
-  const weekday = s(settings, "working_weekday", "08:00 – 01:00");
-  const saturday = s(settings, "working_saturday", "10:00 – 01:00");
-  const sunday = s(settings, "working_sunday", "12:00 – 20:00");
-
-  const wa = `https://wa.me/${whatsapp}?text=${encodeURIComponent("Merhaba, Machine Gym hakkında bilgi almak istiyorum.")}`;
+  const wa = `https://wa.me/${DEFAULTS.whatsapp}?text=${encodeURIComponent("Merhaba, Machine Gym hakkında bilgi almak istiyorum.")}`;
 
   return (
     <footer style={{ background: "#111111", borderTop: "1px solid rgba(106,13,37,0.2)", paddingTop: "4rem", paddingBottom: "2rem" }}>
@@ -43,8 +42,8 @@ export default async function Footer() {
             </p>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               {[
-                { href: instagram, Icon: Instagram, label: "Instagram" },
-                { href: facebook, Icon: Facebook, label: "Facebook" },
+                { href: DEFAULTS.instagram, Icon: Instagram, label: "Instagram" },
+                { href: DEFAULTS.facebook, Icon: Facebook, label: "Facebook" },
                 { href: wa, Icon: MessageCircle, label: "WhatsApp" },
               ].map(({ href, Icon, label }) => (
                 <a key={label} href={href} aria-label={label} target="_blank" rel="noopener noreferrer" style={{ width: "36px", height: "36px", background: "rgba(255,255,255,0.06)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", flexShrink: 0 }}>
@@ -91,22 +90,22 @@ export default async function Footer() {
             <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
               <li style={{ display: "flex", alignItems: "flex-start", gap: "0.625rem" }}>
                 <MapPin style={{ width: "15px", height: "15px", color: "#6A0D25", marginTop: "1px", flexShrink: 0 }} />
-                <span style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.8125rem" }}>{address}</span>
+                <span style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.8125rem" }}>{DEFAULTS.address}</span>
               </li>
               <li style={{ display: "flex", alignItems: "flex-start", gap: "0.625rem" }}>
                 <Phone style={{ width: "15px", height: "15px", color: "#6A0D25", marginTop: "1px", flexShrink: 0 }} />
-                <a href={`tel:+9${phone.replace(/\D/g, "")}`} style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.8125rem", textDecoration: "none" }}>{phone}</a>
+                <a href={`tel:+9${DEFAULTS.phone.replace(/\D/g, "")}`} style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.8125rem", textDecoration: "none" }}>{DEFAULTS.phone}</a>
               </li>
               <li style={{ display: "flex", alignItems: "flex-start", gap: "0.625rem" }}>
                 <Mail style={{ width: "15px", height: "15px", color: "#6A0D25", marginTop: "1px", flexShrink: 0 }} />
-                <a href={`mailto:${email}`} style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.8125rem", textDecoration: "none" }}>{email}</a>
+                <a href={`mailto:${DEFAULTS.email}`} style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.8125rem", textDecoration: "none" }}>{DEFAULTS.email}</a>
               </li>
               <li style={{ display: "flex", alignItems: "flex-start", gap: "0.625rem" }}>
                 <Clock style={{ width: "15px", height: "15px", color: "#6A0D25", marginTop: "1px", flexShrink: 0 }} />
                 <div>
-                  <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.8125rem" }}>Pzt–Cum: {weekday}</p>
-                  <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.8125rem" }}>Cumartesi: {saturday}</p>
-                  <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.8125rem" }}>Pazar: {sunday}</p>
+                  <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.8125rem" }}>Pzt–Cum: {DEFAULTS.weekday}</p>
+                  <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.8125rem" }}>Cumartesi: {DEFAULTS.saturday}</p>
+                  <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.8125rem" }}>Pazar: {DEFAULTS.sunday}</p>
                 </div>
               </li>
             </ul>
