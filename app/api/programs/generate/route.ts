@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime     = "edge";
@@ -30,12 +29,6 @@ interface AIProgram {
   summary: string;
   weeks: [{ week_number: 1; notes: string; days: AIDay[] }];
   nutrition: { daily_calories: number; protein_g: number; carb_g: number; fat_g: number; water_ml: number; meal_count: number; meals: AIMeal[]; general_notes: string; };
-}
-
-function getOpenAI() {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) throw new Error("OPENAI_API_KEY ayarlı değil");
-  return new OpenAI({ apiKey: key });
 }
 
 function calcBMI(w: number, h: number) {
@@ -71,24 +64,50 @@ async function makeHash(data: string): Promise<string> {
     .slice(0, 32);
 }
 
+async function callOpenAI(apiKey: string, systemMsg: string, userMsg: string): Promise<string> {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      max_tokens: 2000,
+      temperature: 0.7,
+      messages: [
+        { role: "system", content: systemMsg },
+        { role: "user",   content: userMsg   },
+      ],
+      response_format: { type: "json_object" },
+    }),
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => res.statusText);
+    throw new Error(`OpenAI API hatası (${res.status}): ${txt.slice(0, 120)}`);
+  }
+  const json = await res.json() as { choices: { message: { content: string } }[] };
+  return json.choices?.[0]?.message?.content ?? "";
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null) as { profile: UserProfile; user_id?: string; email?: string } | null;
   if (!body?.profile) return NextResponse.json({ error: "Profile verisi eksik" }, { status: 400 });
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return NextResponse.json({ error: "OPENAI_API_KEY ayarlı değil" }, { status: 500 });
 
   const p = body.profile;
   if (!p.age || !p.height_cm || !p.weight_kg || !p.goal)
     return NextResponse.json({ error: "Yaş, boy, kilo ve hedef zorunludur" }, { status: 400 });
 
-  const openai = getOpenAI();
   const admin  = createAdminClient();
   const { bmi, category: bmiCategory } = calcBMI(p.weight_kg, p.height_cm);
   const salt = Date.now().toString(36);
   const hash = await makeHash(`${p.age}${p.gender}${p.weight_kg}${p.height_cm}${p.goal}${p.fitness_level}${p.days_per_week}${salt}`);
-
   const injNote = injuryNote(p.injuries);
 
   const systemPrompt = `Kişisel antrenör ve beslenme uzmanısın. SADECE JSON döndür, başka hiçbir şey yazma.`;
-
   const userPrompt = `Kullanıcı: ${p.gender==="erkek"?"Erkek":"Kadın"}, ${p.age} yaş, ${p.height_cm}cm, ${p.weight_kg}kg, BMI:${bmi}
 Hedef: ${p.goal} | Seviye: ${p.fitness_level} | Antrenman: haftada ${p.days_per_week} gün, ${p.session_duration??60}dk
 Ekipman: ${p.available_equipment||"spor salonu"} | Beslenme: ${p.diet_preference||"standart"}
@@ -97,23 +116,18 @@ ${p.injuries ? `Sakatlık: ${p.injuries}` : ""}${injNote ? ` → Kısıtlama: ${
 1 haftalık (7 gün) antrenman + beslenme planı oluştur. ${p.days_per_week} antrenman günü, ${7-p.days_per_week} dinlenme günü.
 Salt: ${salt}
 
-JSON şeması (tam olarak bu yapıyı kullan):
+JSON şeması:
 {"title":"...","summary":"2 cümle özet","weeks":[{"week_number":1,"notes":"...","days":[{"day_number":1,"day_name":"Pazartesi","focus":"Göğüs+Triseps","is_rest_day":false,"warmup_notes":"5dk","cooldown_notes":"5dk esneme","total_duration_min":55,"exercises":[{"name":"Bench Press","sets":3,"reps":"10-12","rest_seconds":60,"notes":""}],"notes":""},{"day_number":2,"day_name":"Salı","focus":"Dinlenme","is_rest_day":true,"exercises":[],"notes":"Aktif dinlenme"}]}],"nutrition":{"daily_calories":2200,"protein_g":165,"carb_g":220,"fat_g":73,"water_ml":2500,"meal_count":4,"meals":[{"name":"Kahvaltı","time":"07:00","foods":["Yulaf 80g","Yumurta 3"],"calories":550}],"general_notes":"..."}}`;
 
   let raw = "";
   try {
-    const resp = await openai.chat.completions.create({
-      model:           "gpt-4o-mini",
-      max_tokens:      2000,
-      temperature:     0.7,
-      messages:        [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-      response_format: { type: "json_object" },
-    });
-    raw = resp.choices[0]?.message?.content ?? "";
+    raw = await callOpenAI(apiKey, systemPrompt, userPrompt);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: `OpenAI hatası: ${msg}` }, { status: 500 });
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
+
+  if (!raw) return NextResponse.json({ error: "AI boş yanıt döndürdü. Tekrar deneyin." }, { status: 500 });
 
   let prog: AIProgram;
   try {
@@ -144,8 +158,8 @@ JSON şeması (tam olarak bu yapıyı kullan):
     return NextResponse.json({ error: `Program kaydedilemedi: ${saveErr?.message}` }, { status: 500 });
 
   const programId = saved.id;
-
   const week = prog.weeks[0];
+
   const { data: weekRow } = await admin.from("program_weeks")
     .insert({ program_id: programId, week_number: 1, notes: week.notes ?? "" })
     .select("id").single();
@@ -191,15 +205,10 @@ JSON şeması (tam olarak bu yapıyı kullan):
     });
   }
 
-  const recipientEmail = body.email ?? p.email ?? null;
-
   return NextResponse.json({
     success: true, programId,
     title: prog.title, summary: prog.summary,
     status: "pending", bmi, bmiCategory,
-    emailSent: false,
-    message: recipientEmail
-      ? "Programın hazırlandı! Admin onayı sonrası e-posta ile bilgilendirileceksin."
-      : "Program oluşturuldu. Admin onayı bekleniyor.",
+    message: "Programın hazırlandı! Admin onayı sonrası sana iletilecek.",
   });
 }
