@@ -1,14 +1,20 @@
 "use client";
 import { motion } from "framer-motion";
 
-const stats = [
-  { value: "500+", label: "Aktif Üye" },
-  { value: "5", label: "Branş" },
-  { value: "10+", label: "Yıl Deneyim" },
-  { value: "3", label: "Uzman Eğitmen" },
-];
+interface HomeStatsProps {
+  members?: string;
+  years?: string;
+  trainers?: string;
+}
 
-export default function HomeStats() {
+export default function HomeStats({ members = "500+", years = "10+", trainers = "3" }: HomeStatsProps) {
+  const stats = [
+    { value: members, label: "Aktif Üye" },
+    { value: "5", label: "Branş" },
+    { value: years, label: "Yıl Deneyim" },
+    { value: trainers, label: "Uzman Eğitmen" },
+  ];
+
   return (
     <section
       style={{

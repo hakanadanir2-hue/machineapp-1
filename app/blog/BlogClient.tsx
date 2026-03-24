@@ -87,11 +87,24 @@ export default function BlogClient({ posts, isPlaceholder }: { posts: Post[]; is
       )}
 
       {/* Posts Grid */}
-      {filtered.length === 0 ? (
+      {posts.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "5rem 1rem" }}>
+          <div style={{ width: 72, height: 72, borderRadius: "50%", background: "rgba(106,13,37,0.15)", border: "1px solid rgba(212,175,55,0.15)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.25rem" }}>
+            <BookOpen style={{ width: 28, height: 28, color: "#D4AF37", opacity: 0.6 }} />
+          </div>
+          <h3 style={{ color: "#fff", fontWeight: 700, fontSize: "1.125rem", fontFamily: "var(--font-heading)", marginBottom: "0.75rem" }}>Blog Yakında</h3>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.9rem", maxWidth: 360, margin: "0 auto 1.5rem", lineHeight: 1.6 }}>
+            Fitness, beslenme ve dövüş sporları hakkında yazılarımız çok yakında burada olacak.
+          </p>
+          <a href="/randevu" style={{ display: "inline-block", padding: "0.625rem 1.25rem", background: "#6A0D25", color: "#fff", fontWeight: 700, fontSize: "0.875rem", borderRadius: 10, border: "1px solid rgba(212,175,55,0.25)", textDecoration: "none" }}>
+            Randevu Al
+          </a>
+        </div>
+      ) : filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "4rem 0", color: "rgba(255,255,255,0.25)" }}>
           <BookOpen style={{ width: 40, height: 40, marginBottom: 12, opacity: 0.3 }} />
           <p style={{ fontSize: 15 }}>Bu kategoride yazı bulunamadı</p>
-          <button onClick={() => { setActiveTag("Tümü"); setSearch(""); }} style={{ marginTop: 12, padding: "7px 18px", background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: 8, color: "#D4AF37", cursor: "pointer", fontSize: 13 }}>
+          <button onClick={() => { setActiveTag("Tümü"); setSearch(""); }} style={{ marginTop: 12, padding: "7px 18px", background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,102,0.2)", borderRadius: 8, color: "#D4AF37", cursor: "pointer", fontSize: 13 }}>
             Tümünü Göster
           </button>
         </div>

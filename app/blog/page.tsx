@@ -42,7 +42,7 @@ export default async function BlogPage() {
           ? p.tags.split(",").map((t: string) => t.trim()).filter(Boolean)
           : [],
       }))
-    : PLACEHOLDER_POSTS;
+    : [];
   const isPlaceholder = !postsFromDb || postsFromDb.length === 0;
 
   return (

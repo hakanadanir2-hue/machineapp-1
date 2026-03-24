@@ -48,7 +48,11 @@ export default async function Home() {
           initialMedia={(heroMedia ?? []) as { id: string; type: "photo" | "youtube"; url: string; order_index: number }[]}
           initialInterval={parseInt(heroSetting?.value ?? "3000") || 3000}
         />
-        <HomeStats />
+        <HomeStats
+          members={s(settings, "about_members", "500+")}
+          years={s(settings, "about_years", "10+")}
+          trainers={s(settings, "about_trainers", "3")}
+        />
         <HomeServices />
         <HomeWhyUs />
         <HomePricingPreview />

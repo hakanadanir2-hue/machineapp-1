@@ -55,6 +55,7 @@ const navGroups: NavGroup[] = [
       { label: "Fiyatlar", href: "/admin/pricing", icon: <Tag size={17} /> },
       { label: "SSS", href: "/admin/sss", icon: <HelpCircle size={17} /> },
       { label: "Blog", href: "/admin/blog", icon: <BookOpen size={17} /> },
+      { label: "Eğitmenler", href: "/admin/staff", icon: <Users size={17} /> },
       { label: "Mağaza", href: "/admin/magaza", icon: <ShoppingBag size={17} /> },
       { label: "Medya Kütüphanesi", href: "/admin/medya", icon: <ImageIcon size={17} /> },
       { label: "SEO Yönetimi", href: "/admin/seo", icon: <Search size={17} /> },

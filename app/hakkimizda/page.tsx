@@ -2,6 +2,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { getSettings, s } from "@/lib/settings";
+import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Award, Target, Heart, ArrowRight, Users, Clock, Dumbbell, Star } from "lucide-react";
 import { buildMetadata } from "@/lib/seo";
@@ -10,57 +11,19 @@ export async function generateMetadata() {
   return buildMetadata({ settingsKey: "seo_hakkimizda", defaultTitle: "Hakkımızda — Machine Gym | Bolu Premium Spor Salonu", defaultDesc: "Machine Gym hakkında: Bolu'nun premium fitness & boks salonu. Misyonumuz, vizyonumuz ve değerlerimiz.", path: "/hakkimizda" });
 }
 
-const stats = [
-  { value: "500+", label: "Aktif Üye", Icon: Users },
-  { value: "10+", label: "Yıl Deneyim", Icon: Clock },
-  { value: "5", label: "Branş", Icon: Dumbbell },
-  { value: "3", label: "Uzman Eğitmen", Icon: Star },
-];
-
 const values = [
-  {
-    Icon: Award,
-    title: "Mükemmeliyetçilik",
-    desc: "Her antrenman, her program, her hizmette en yüksek standardı hedefliyoruz. Çünkü ortalamayla yetinmiyoruz.",
-  },
-  {
-    Icon: Target,
-    title: "Sonuç Odaklılık",
-    desc: "Hedefin ne olursa olsun, ölçülebilir sonuçlar için bilimsel yaklaşım ve kişiselleştirilmiş programlar uyguluyoruz.",
-  },
-  {
-    Icon: Heart,
-    title: "Topluluk Ruhu",
-    desc: "Birbirini motive eden, destekleyen ve birlikte büyüyen bir üye topluluğu oluşturuyoruz. Yalnız değilsin.",
-  },
-];
-
-const trainers = [
-  {
-    name: "Ahmet Kaya",
-    role: "Baş Fitness Eğitmeni",
-    cert: "ACSM · NASM CPT",
-    img: "https://images.unsplash.com/photo-1567013127542-490d757e51cd?w=400&q=80",
-    exp: "8 yıl deneyim",
-  },
-  {
-    name: "Murat Demir",
-    role: "Boks & Kickboks Koçu",
-    cert: "WBC Lisanslı",
-    img: "https://images.unsplash.com/photo-1552058544-f2b08422138a?w=400&q=80",
-    exp: "12 yıl deneyim",
-  },
-  {
-    name: "Emre Yıldız",
-    role: "Muay Thai Eğitmeni",
-    cert: "IFMA Sertifikalı",
-    img: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=400&q=80",
-    exp: "6 yıl deneyim",
-  },
+  { Icon: Award, title: "Mükemmeliyetçilik", desc: "Her antrenman, her program, her hizmette en yüksek standardı hedefliyoruz. Çünkü ortalamayla yetinmiyoruz." },
+  { Icon: Target, title: "Sonuç Odaklılık", desc: "Hedefin ne olursa olsun, ölçülebilir sonuçlar için bilimsel yaklaşım ve kişiselleştirilmiş programlar uyguluyoruz." },
+  { Icon: Heart, title: "Topluluk Ruhu", desc: "Birbirini motive eden, destekleyen ve birlikte büyüyen bir üye topluluğu oluşturuyoruz. Yalnız değilsin." },
 ];
 
 export default async function HakkimizdaPage() {
-  const settings = await getSettings();
+  const supabase = await createClient();
+  const [settings, { data: staffData }] = await Promise.all([
+    getSettings(),
+    supabase.from("staff").select("id,name,role,cert,exp_years,image_url,order_index").eq("is_active", true).order("order_index"),
+  ]);
+  const staff = staffData ?? [];
 
   const stats = [
     { value: s(settings, "about_members", "500+"), label: "Aktif Üye", Icon: Users },
@@ -68,6 +31,7 @@ export default async function HakkimizdaPage() {
     { value: "5", label: "Branş", Icon: Dumbbell },
     { value: s(settings, "about_trainers", "3"), label: "Uzman Eğitmen", Icon: Star },
   ];
+
   return (
     <>
       <Navbar />
@@ -77,7 +41,7 @@ export default async function HakkimizdaPage() {
             <p style={{ color: "#D4AF37", fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "0.75rem" }}>Biz Kimiz?</p>
             <h1 style={{ fontSize: "clamp(2rem, 5vw, 3.25rem)", fontWeight: 800, color: "#fff", fontFamily: "var(--font-heading)", marginBottom: "1rem" }}>Hakkımızda</h1>
             <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.9375rem", maxWidth: "32rem", marginInline: "auto", lineHeight: 1.7 }}>
-              Bolu'nun en disiplinli fitness ve dövüş sporları salonu. Bilimsel programlar, uzman kadro, premium ortam.
+              Bolu&apos;nun en disiplinli fitness ve dövüş sporları salonu. Bilimsel programlar, uzman kadro, premium ortam.
             </p>
           </div>
         </div>
@@ -99,28 +63,27 @@ export default async function HakkimizdaPage() {
 
           {/* Story */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "3rem", marginBottom: "4rem", alignItems: "center" }} className="about-story">
-            <style>{`
-              @media (min-width: 768px) {
-                .about-story { grid-template-columns: 1fr 1fr !important; }
-              }
-            `}</style>
+            <style>{`@media (min-width: 768px) { .about-story { grid-template-columns: 1fr 1fr !important; } }`}</style>
             <div>
               <p style={{ color: "#D4AF37", fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "0.75rem" }}>Hikayemiz</p>
               <h2 style={{ fontSize: "clamp(1.5rem, 3vw, 2.25rem)", fontWeight: 800, color: "#fff", fontFamily: "var(--font-heading)", marginBottom: "1.25rem", lineHeight: 1.2 }}>
                 Bolu&apos;nun En Disiplinli Salonu
               </h2>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem", color: "rgba(255,255,255,0.6)", fontSize: "0.875rem", lineHeight: 1.75 }}>
-                <p>Machine Gym, Bolu&apos;daki fitness ve dövüş sporları tutkunlarına dünya standartlarında hizmet sunma misyonuyla kuruldu.</p>
-                <p>10 yılı aşkın deneyimimizle 500&apos;den fazla aktif üyemize fitness, personal training, boks, kickboks ve muay thai branşlarında profesyonel eğitim veriyoruz.</p>
-                <p>ACSM, NASM ve NSCA sertifikalı eğitmenlerimizle bilimsel temelli programlar tasarlıyor, her üyemizin hedefine ulaşmasını öncelik olarak görüyoruz.</p>
+                <p>{s(settings, "about_story_1", "Machine Gym, Bolu'daki fitness ve dövüş sporları tutkunlarına dünya standartlarında hizmet sunma misyonuyla kuruldu.")}</p>
+                <p>{s(settings, "about_story_2", "10 yılı aşkın deneyimimizle 500'den fazla aktif üyemize fitness, personal training, boks, kickboks ve muay thai branşlarında profesyonel eğitim veriyoruz.")}</p>
+                <p>{s(settings, "about_story_3", "Sertifikalı eğitmenlerimizle bilimsel temelli programlar tasarlıyor, her üyemizin hedefine ulaşmasını öncelik olarak görüyoruz.")}</p>
               </div>
             </div>
-            <div style={{ borderRadius: "20px", overflow: "hidden", height: "340px" }}>
-              <img
-                src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80"
-                alt="Machine Gym Salon"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
+            <div style={{ borderRadius: "20px", overflow: "hidden", height: "340px", background: "#1A1A1A" }}>
+              {s(settings, "about_image") ? (
+                <img src={s(settings, "about_image")} alt="Machine Gym Bolu Spor Salonu" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.75rem" }}>
+                  <Dumbbell style={{ width: 40, height: 40, color: "rgba(212,175,55,0.3)" }} />
+                  <p style={{ color: "rgba(255,255,255,0.2)", fontSize: "0.8rem" }}>Admin panelinden fotoğraf ekle</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -143,27 +106,35 @@ export default async function HakkimizdaPage() {
             </div>
           </div>
 
-          {/* Trainers */}
-          <div style={{ marginBottom: "4rem" }}>
-            <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-              <p style={{ color: "#D4AF37", fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "0.75rem" }}>Ekibimiz</p>
-              <h2 style={{ fontSize: "clamp(1.5rem, 3vw, 2.25rem)", fontWeight: 800, color: "#fff", fontFamily: "var(--font-heading)" }}>Uzman Eğitmenlerimiz</h2>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.25rem" }}>
-              {trainers.map((t) => (
-                <div key={t.name} style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: "20px", overflow: "hidden" }}>
-                  <div style={{ height: "200px", overflow: "hidden" }}>
-                    <img src={t.img} alt={t.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
+          {/* Trainers — only if real staff exists in DB */}
+          {staff.length > 0 && (
+            <div style={{ marginBottom: "4rem" }}>
+              <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
+                <p style={{ color: "#D4AF37", fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "0.75rem" }}>Ekibimiz</p>
+                <h2 style={{ fontSize: "clamp(1.5rem, 3vw, 2.25rem)", fontWeight: 800, color: "#fff", fontFamily: "var(--font-heading)" }}>Uzman Eğitmenlerimiz</h2>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.25rem" }}>
+                {staff.map((t) => (
+                  <div key={String(t.id)} style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: "20px", overflow: "hidden" }}>
+                    <div style={{ height: "200px", overflow: "hidden", background: "#111" }}>
+                      {t.image_url ? (
+                        <img src={String(t.image_url)} alt={`${String(t.name)} — Machine Gym Eğitmeni`} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
+                      ) : (
+                        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <Users style={{ width: 40, height: 40, color: "rgba(212,175,55,0.2)" }} />
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding: "1.25rem" }}>
+                      <h3 style={{ color: "#fff", fontWeight: 700, fontSize: "1rem", fontFamily: "var(--font-heading)", marginBottom: "0.25rem" }}>{String(t.name)}</h3>
+                      <p style={{ color: "#D4AF37", fontSize: "0.8125rem", fontWeight: 600, marginBottom: "0.375rem" }}>{String(t.role)}</p>
+                      {t.cert && <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.75rem" }}>{String(t.cert)}{t.exp_years ? ` · ${String(t.exp_years)} yıl deneyim` : ""}</p>}
+                    </div>
                   </div>
-                  <div style={{ padding: "1.25rem" }}>
-                    <h3 style={{ color: "#fff", fontWeight: 700, fontSize: "1rem", fontFamily: "var(--font-heading)", marginBottom: "0.25rem" }}>{t.name}</h3>
-                    <p style={{ color: "#D4AF37", fontSize: "0.8125rem", fontWeight: 600, marginBottom: "0.375rem" }}>{t.role}</p>
-                    <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.75rem" }}>{t.cert} · {t.exp}</p>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* CTA */}
           <div style={{ background: "rgba(106,13,37,0.08)", border: "1px solid rgba(106,13,37,0.2)", borderRadius: "20px", padding: "3rem 2rem", textAlign: "center" }}>
