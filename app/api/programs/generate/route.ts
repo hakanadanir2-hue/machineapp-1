@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendProgramEmail } from "@/lib/email";
 import crypto from "crypto";
 
 export const runtime     = "nodejs";
@@ -8,6 +9,7 @@ export const maxDuration = 60;
 
 interface UserProfile {
   full_name?: string;
+  email?: string;
   age: number;
   gender: string;
   height_cm: number;
@@ -63,7 +65,7 @@ function injuryNote(injuries?: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => null) as { profile: UserProfile; user_id?: string } | null;
+  const body = await req.json().catch(() => null) as { profile: UserProfile; user_id?: string; email?: string } | null;
   if (!body?.profile) return NextResponse.json({ error: "Profile verisi eksik" }, { status: 400 });
 
   const p = body.profile;
@@ -184,10 +186,26 @@ JSON şeması (tam olarak bu yapıyı kullan):
     });
   }
 
+  const recipientEmail = body.email ?? p.email ?? null;
+  if (recipientEmail) {
+    sendProgramEmail({
+      to:             recipientEmail,
+      fullName:       p.full_name ?? "Değerli Üyemiz",
+      programTitle:   prog.title,
+      programSummary: prog.summary ?? "",
+      programId,
+      bmi,
+      bmiCategory,
+    }).catch(() => {});
+  }
+
   return NextResponse.json({
     success: true, programId,
     title: prog.title, summary: prog.summary,
     status: "pending", bmi, bmiCategory,
-    message: "Program oluşturuldu. Admin onayı bekleniyor.",
+    emailSent: !!recipientEmail,
+    message: recipientEmail
+      ? "Programın hazırlandı! Detaylar e-posta adresine gönderildi."
+      : "Program oluşturuldu. Admin onayı bekleniyor.",
   });
 }

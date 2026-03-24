@@ -134,10 +134,15 @@ export default function ProgramAlPage(){
       const r=await fetch("/api/programs/generate",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({profile}),
+        body:JSON.stringify({profile,email:form.email}),
+        signal:AbortSignal.timeout(55000),
       });
-      const d=await r.json();
-      if(!r.ok) throw new Error(d.error||`Sunucu hatası (${r.status})`);
+      const text=await r.text();
+      if(!text) throw new Error("Sunucu yanıt vermedi. Lütfen tekrar deneyin.");
+      let d:Record<string,unknown>;
+      try{ d=JSON.parse(text); }
+      catch{ throw new Error("Sunucu geçersiz yanıt döndürdü. Lütfen tekrar deneyin."); }
+      if(!r.ok) throw new Error((d.error as string)||`Sunucu hatası (${r.status})`);
       setResult({
         programId:   d.programId,
         title:       d.title,
