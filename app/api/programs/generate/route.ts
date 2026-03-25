@@ -147,13 +147,13 @@ async function fetchExercisesForProfile(
     byCategory[cat].push(r);
   }
 
+  // Pick up to 6 exercises per muscle group — keeps prompt compact (~40 total)
   const balanced: ExerciseRow[] = [];
-  const perCat = Math.max(8, Math.floor(100 / Math.max(Object.keys(byCategory).length, 1)));
   for (const cat of Object.keys(byCategory)) {
-    balanced.push(...byCategory[cat].slice(0, perCat));
+    balanced.push(...byCategory[cat].slice(0, 6));
   }
 
-  return balanced.slice(0, 110);
+  return balanced.slice(0, 45);
 }
 
 async function callOpenAI(apiKey: string, systemMsg: string, userMsg: string): Promise<string> {

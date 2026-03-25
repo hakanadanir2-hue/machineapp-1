@@ -139,7 +139,7 @@ export default function ProgramAlPage(){
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({profile,email:form.email}),
-        signal:AbortSignal.timeout(55000),
+        signal:AbortSignal.timeout(85000),
       });
       const text=await r.text();
       if(!text) throw new Error("Sunucu yanıt vermedi. Lütfen tekrar deneyin.");
