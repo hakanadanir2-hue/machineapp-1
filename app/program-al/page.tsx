@@ -12,12 +12,15 @@ type Activity = "sedentary"|"light"|"moderate"|"active"|"extra_active";
 type Level    = "beginner"|"intermediate"|"advanced";
 type Equip    = "gym"|"home_basic"|"home_none"|"outdoor";
 type Diet     = "standard"|"high_protein"|"low_carb"|"vegetarian"|"vegan";
+type FocusArea = "chest"|"back"|"shoulders"|"arms"|"legs"|"core"|"glutes"|"cardio";
 
 interface F {
   full_name:string; email:string; gender:Gender;
   age:string; weight:string; height:string;
   goal:Goal; activity_level:Activity; level:Level;
-  weekly_days:number; equipment:Equip; diet_preference:Diet;
+  weekly_days:number; session_duration:number;
+  equipment:Equip; diet_preference:Diet;
+  focus_areas:FocusArea[];
   injury_notes:string; extra_notes:string;
 }
 interface ProgramResult {
@@ -43,7 +46,7 @@ const LVLS=[{v:"beginner",l:"Başlangıç"},{v:"intermediate",l:"Orta Seviye"},{
 const EQUIPS=[{v:"gym",l:"Spor Salonu"},{v:"home_basic",l:"Evde Temel Ekipman"},{v:"home_none",l:"Ekipmansız / Vücut Ağırlığı"},{v:"outdoor",l:"Dışarıda / Park"}];
 const DIETS=[{v:"standard",l:"Standart"},{v:"high_protein",l:"Yüksek Protein"},{v:"low_carb",l:"Az Karbonhidrat"},{v:"vegetarian",l:"Vejetaryen"},{v:"vegan",l:"Vegan"}];
 
-const INIT:F={full_name:"",email:"",gender:"male",age:"",weight:"",height:"",goal:"weight_loss",activity_level:"moderate",level:"beginner",weekly_days:3,equipment:"gym",diet_preference:"standard",injury_notes:"",extra_notes:""};
+const INIT:F={full_name:"",email:"",gender:"male",age:"",weight:"",height:"",goal:"weight_loss",activity_level:"moderate",level:"beginner",weekly_days:3,session_duration:60,equipment:"gym",diet_preference:"standard",focus_areas:[],injury_notes:"",extra_notes:""};
 
 const actMap:Record<Activity,string>={sedentary:"sedanter",light:"hafif",moderate:"orta",active:"aktif",extra_active:"extra_aktif"};
 const goalMap:Record<Goal,string>={weight_loss:"kilo_ver",muscle_gain:"kas_kazan",toning:"kondisyon",maintenance:"saglikli_kal",boxing:"genel_fitness",health:"saglikli_kal"};
@@ -61,9 +64,10 @@ function buildProfile(form:F){
     fitness_level:      levelMap[form.level],
     activity_level:     actMap[form.activity_level],
     days_per_week:      form.weekly_days,
-    session_duration:   60,
+    session_duration:   form.session_duration,
     available_equipment:equipMap[form.equipment],
     diet_preference:    form.diet_preference,
+    focus_areas:        form.focus_areas,
     injuries:           form.injury_notes,
     medical_notes:      form.extra_notes,
   };
@@ -311,6 +315,45 @@ export default function ProgramAlPage(){
                     </div>
                   </div>
                   <div>
+                    <label style={LBL}>Seans Süresi</label>
+                    <div style={{display:"flex",gap:"0.4rem"}}>
+                      {([30,45,60,75,90] as const).map(m=>(
+                        <button key={m} type="button" onClick={()=>fset("session_duration",m)}
+                          style={{flex:1,padding:"0.625rem 0",borderRadius:10,cursor:"pointer",border:`1px solid ${form.session_duration===m?"rgba(212,175,55,0.5)":"#2A2A2A"}`,background:form.session_duration===m?"rgba(106,13,37,0.3)":"#111",color:form.session_duration===m?"#D4AF37":"rgba(255,255,255,0.4)",fontWeight:600,fontSize:"0.8rem",transition:"all 0.15s"}}>
+                          {m}dk
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={LBL}>Odaklanılacak Bölgeler <span style={{color:"rgba(255,255,255,0.3)",fontWeight:400,fontSize:"0.75rem"}}>(isteğe bağlı, birden fazla seçilebilir)</span></label>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.4rem"}}>
+                      {([
+                        {v:"chest",l:"Göğüs"},
+                        {v:"back",l:"Sırt"},
+                        {v:"shoulders",l:"Omuz"},
+                        {v:"arms",l:"Kollar"},
+                        {v:"legs",l:"Bacaklar"},
+                        {v:"glutes",l:"Kalça / Glutes"},
+                        {v:"core",l:"Core / Karın"},
+                        {v:"cardio",l:"Kardiyo / Kondisyon"},
+                      ] as {v:FocusArea;l:string}[]).map(o=>{
+                        const active=form.focus_areas.includes(o.v);
+                        return(
+                          <button key={o.v} type="button"
+                            onClick={()=>{
+                              fset("focus_areas", active
+                                ? form.focus_areas.filter(x=>x!==o.v)
+                                : [...form.focus_areas,o.v]);
+                            }}
+                            style={{padding:"0.6rem 0.75rem",borderRadius:10,cursor:"pointer",border:`1px solid ${active?"rgba(212,175,55,0.5)":"#2A2A2A"}`,background:active?"rgba(106,13,37,0.3)":"#111",color:active?"#D4AF37":"rgba(255,255,255,0.55)",fontWeight:active?700:500,fontSize:"0.8125rem",textAlign:"left",transition:"all 0.15s"}}>
+                            {active?"✓ ":""}{o.l}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
                     <label style={LBL}>Ekipman Durumu</label>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.5rem"}}>
                       {EQUIPS.map(o=><Chip key={o.v} active={form.equipment===o.v} onClick={()=>fset("equipment",o.v as Equip)}>{o.l}</Chip>)}
@@ -350,7 +393,7 @@ export default function ProgramAlPage(){
                   <CheckCircle style={{width:28,height:28,color:"#4ade80",flexShrink:0}}/>
                   <div>
                     <h2 style={{color:"#fff",fontWeight:800,fontSize:"1.125rem",fontFamily:"var(--font-heading)",marginBottom:"0.2rem"}}>{result.title}</h2>
-                    <p style={{color:"rgba(255,255,255,0.45)",fontSize:"0.8125rem"}}>4 haftalık kişisel program hazır</p>
+                    <p style={{color:"rgba(255,255,255,0.45)",fontSize:"0.8125rem"}}>Kişisel fitness ve beslenme programın hazır</p>
                   </div>
                 </div>
                 <p style={{color:"rgba(255,255,255,0.6)",fontSize:"0.875rem",lineHeight:1.6,marginBottom:"1.5rem"}}>{result.summary}</p>

@@ -19,6 +19,7 @@ interface UserProfile {
   diet_preference?: string;
   injuries?: string;
   medical_notes?: string;
+  focus_areas?: string[];
 }
 
 interface AIExercise { name: string; exercise_id?: string; sets: number; reps: string; rest_seconds: number; notes?: string; }
@@ -51,19 +52,27 @@ function calcBMI(w: number, h: number) {
   return { bmi, category: cat };
 }
 
+// Stem-based matching for Turkish inflections (fıtık → fıtı, omuz → omuz)
 const INJURY_MAP: Record<string, string> = {
-  "fıtık": "bel ve ağır squat/deadlift yok",
-  "fitık": "bel ve ağır squat/deadlift yok",
-  "diz":   "squat/lunge/jumping yok",
-  "sırt":  "deadlift/good morning yok",
-  "omuz":  "overhead press/upright row yok",
-  "bilek": "pushup/plank modifiye et",
+  "fıtı":  "Deadlift, squat, good morning, bent over row, roman deadlift, back extension — KESİNLİKLE YASAK",
+  "fiti":  "Deadlift, squat, good morning — KESİNLİKLE YASAK",
+  "disk":  "Deadlift, squat, back extension, hyperextension — KESİNLİKLE YASAK",
+  "diz":   "Squat, lunge, leg press, box jump, step up — KESİNLİKLE YASAK",
+  "sırt":  "Deadlift, good morning, bent over row, roman deadlift — KESİNLİKLE YASAK",
+  "back":  "Deadlift, good morning, back extension — KESİNLİKLE YASAK",
+  "omuz":  "Overhead press, upright row, behind neck press, military press — KESİNLİKLE YASAK",
+  "bilek": "Barbell curl, pushup, plank — değiştir ya da kaldır",
+  "boyun": "Overhead press, shrug, neck extension — KESİNLİKLE YASAK",
+  "kalça": "Deadlift, deep squat, Romanian deadlift, RDL — KESİNLİKLE YASAK",
 };
 
 function injuryNote(injuries?: string) {
   if (!injuries) return "";
   const lower = injuries.toLowerCase();
-  return Object.entries(INJURY_MAP).filter(([k]) => lower.includes(k)).map(([, v]) => v).join("; ");
+  return Object.entries(INJURY_MAP)
+    .filter(([k]) => lower.includes(k))
+    .map(([, v]) => v)
+    .join("; ");
 }
 
 function mapDifficulty(level: string): string[] {
@@ -83,13 +92,18 @@ function formatExerciseList(exercises: ExerciseRow[]): string {
     .join("\n");
 }
 
+// Stem-based regex filters — removes dangerous exercises from DB list for injured users
 const INJURY_FILTERS: Record<string, RegExp> = {
-  "fıtık":  /bel|deadlift|squat|good.morning|roman.dead|bent.over/i,
-  "fitık":  /bel|deadlift|squat|good.morning/i,
-  "diz":    /squat|lunge|leg.press|jump|step.up|knee/i,
-  "sırt":   /deadlift|good.morning|bent.over|roman.dead/i,
-  "omuz":   /overhead|shoulder.press|upright.row|arnold|lateral.raise/i,
-  "bilek":  /wrist|pushup|push.up|plank|curl.*bar/i,
+  "fıtı":  /deadlift|squat|good.morning|roman|bent.over|back.extension|hyperextension|stiff.leg|rdl|romanian/i,
+  "fiti":  /deadlift|squat|good.morning/i,
+  "disk":  /deadlift|squat|back.extension|hyperextension|good.morning|roman/i,
+  "diz":   /squat|lunge|leg.press|jump|step.up|box.jump|knee.extension|knee.flexion/i,
+  "sırt":  /deadlift|good.morning|bent.over|roman|back.extension|hyperextension/i,
+  "back":  /deadlift|good.morning|back.extension|hyperextension/i,
+  "omuz":  /overhead|shoulder.press|upright.row|arnold|behind.neck|military.press/i,
+  "bilek": /wrist|barbell.curl|pushup|push.up|plank/i,
+  "boyun": /overhead|behind.neck|shrug|neck.extension/i,
+  "kalça": /deadlift|deep.squat|romanian|rdl|hip.hinge/i,
 };
 
 function getInjuryRegexes(injuries?: string): RegExp[] {
@@ -184,33 +198,73 @@ export async function POST(req: NextRequest) {
 
   const hasDbExercises = dbExercises.length > 0;
 
-  const systemPrompt = `Sen deneyimli bir kişisel antrenör ve spor beslenme uzmanısın.
-Kullanıcının fiziksel ölçüleri, hedefi, seviyesi ve kısıtlamalarına göre GERÇEK ve UYGULANABİLİR antrenman + beslenme programı hazırlarsın.
+  // Build explicit banned movement list from injury
+  const injBan = injNote;
 
-KURALLAR:
+  // Age-based adjustments
+  const ageNote = p.age >= 50
+    ? "Kişi 50+ yaşında: eklem dostu egzersizler, daha uzun dinlenme süreleri, düşük ağırlık yüksek tekrar."
+    : p.age <= 18
+    ? "Kişi 18 yaş altı: olimpik hareketler ve maksimal yükten kaçın, teknik geliştirmeye odaklan."
+    : "";
+
+  // Gender-based notes
+  const genderNote = p.gender === "kadin"
+    ? "Kadın katılımcı: bacak/glute ağırlıklı programlama, göğüs bölgesi egzersizlerini dahil et."
+    : "";
+
+  // Focus areas
+  const focusNote = p.focus_areas?.length
+    ? `Odaklanılacak bölgeler: ${p.focus_areas.join(", ")}`
+    : "";
+
+  const systemPrompt = `Sen deneyimli bir kişisel antrenör ve spor beslenme uzmanısın.
+Kullanıcının tüm özelliklerini (yaş, cinsiyet, hedef, seviye, sakatlık) dikkate alarak GERÇEK ve KİŞİYE ÖZEL program yazarsın.
+
+EGZERSIZ KURALLARI:
 ${hasDbExercises ? `- SADECE aşağıdaki "Egzersiz Kütüphanesi"ndeki egzersizleri kullan. Listede olmayan egzersiz YAZMA.
 - Her egzersiz için listedeki [ID] değerini "exercise_id" alanına yaz (UUID formatında)` : "- Uygun egzersizler seç"}
-- Her antrenman günü MUTLAKA 5-7 egzersiz içersin
 - Gerçekçi set/tekrar/dinlenme süreleri kullan
 - Beslenme planı kişinin kalorisine göre hesaplanmış olsun
-- SADECE geçerli JSON döndür`;
+- SADECE geçerli JSON döndür
+
+KAS GRUBU BAŞINA EGZERSİZ SAYISI (günlük split'e göre):
+- Göğüs günü: göğüs 3-4 egzersiz + triseps 2-3 egzersiz = toplam 5-7
+- Sırt günü: sırt 4-5 egzersiz + biseps 2-3 egzersiz = toplam 6-8
+- Bacak günü: quadriseps 2-3 + hamstring 2-3 + glutes 1-2 + baldır 1 = toplam 6-9
+- Omuz günü: omuz 3-4 egzersiz + kol (biseps+triseps) 3-4 = toplam 6-8
+- Full body günü: her büyük kas grubundan 1-2 egzersiz = toplam 6-8
+- Push/Pull/Legs bölünmesi de kullanılabilir
+
+${injBan ? `⚠️ SAĞLIK KISITLAMALARI — KESİNLİKLE UYULMASI ZORUNLU:
+${injBan}
+Bu hareketleri HİÇBİR KOŞULDA programa YAZMA. Alternatif egzersiz seç.` : ""}`;
 
   const userPrompt = `Kullanıcı Profili:
 - Cinsiyet: ${p.gender === "erkek" ? "Erkek" : "Kadın"} | Yaş: ${p.age} | Boy: ${p.height_cm}cm | Kilo: ${p.weight_kg}kg | BMI: ${bmi} (${bmiCategory})
 - Hedef: ${p.goal} | Seviye: ${p.fitness_level} | ${p.days_per_week} gün/hafta | ${p.session_duration ?? 60}dk/seans
 - Ekipman: ${p.available_equipment || "tam donanımlı spor salonu"} | Beslenme: ${p.diet_preference || "standart"}
-${p.injuries ? `- Sakatlık: ${p.injuries}` : ""}${injNote ? ` → KISITLAMA: ${injNote}` : ""}
+${p.injuries ? `- Sakatlık/Sağlık Durumu: ${p.injuries}` : ""}${injBan ? `\n- ⛔ YASAK HAREKETLERİ KESİNLİKLE YAZMA: ${injBan}` : ""}
+${ageNote ? `- ${ageNote}` : ""}${genderNote ? `\n- ${genderNote}` : ""}${focusNote ? `\n- ${focusNote}` : ""}
+${p.medical_notes ? `- Ek not: ${p.medical_notes}` : ""}
 
 ${hasDbExercises ? `EGZERSİZ KÜTÜPHANESİ (yalnızca bunlardan seç, ${dbExercises.length} egzersiz):
 ${exerciseList}
 
-` : ""}GÖREV: ${p.days_per_week} antrenman + ${7 - p.days_per_week} dinlenme günlü 1 haftalık program oluştur.
-Her antrenman gününde 5-7 egzersiz. Kas gruplarını dengeli dağıt.
+` : ""}GÖREV: ${p.days_per_week} antrenman + ${7 - p.days_per_week} dinlenme günlü 1 haftalık kişisel program oluştur.
+- Her antrenman günü farklı kas grubuna odaklan (split mantığı)
+- Kas grubu başına doğru egzersiz sayısını uygula (yukarıdaki kurallara göre)
+- ${p.days_per_week} günlük split: ${
+    p.days_per_week <= 2 ? "Full body" :
+    p.days_per_week === 3 ? "Push/Pull/Legs veya Full Body" :
+    p.days_per_week === 4 ? "Üst/Alt bölünmesi veya Göğüs+Tris / Sırt+Bis / Bacak / Omuz+Kol" :
+    "5 günlük split: Göğüs / Sırt / Bacak / Omuz / Kol+Core"
+  }
 
 JSON FORMATI:
-{"title":"...","summary":"2-3 cümle","weeks":[{"week_number":1,"notes":"...","days":[{"day_number":1,"day_name":"Pazartesi","focus":"Göğüs+Triseps","is_rest_day":false,"warmup_notes":"5dk kardiyo","cooldown_notes":"5dk esneme","total_duration_min":60,"notes":"...","exercises":[{"exercise_id":"UUID_BURAYA","name":"Bench Press","sets":4,"reps":"8-10","rest_seconds":90,"notes":"form notu"}]},{"day_number":2,"day_name":"Salı","focus":"Dinlenme","is_rest_day":true,"exercises":[],"warmup_notes":null,"cooldown_notes":null,"total_duration_min":null,"notes":"Aktif dinlenme"}]}],"nutrition":{"daily_calories":2200,"protein_g":165,"carb_g":220,"fat_g":73,"water_ml":2500,"meal_count":5,"meals":[{"name":"Kahvaltı","time":"07:30","foods":["Yulaf 80g","Yumurta 3"],"calories":550}],"general_notes":"..."}}
+{"title":"...","summary":"2-3 cümle","weeks":[{"week_number":1,"notes":"...","days":[{"day_number":1,"day_name":"Pazartesi","focus":"Göğüs+Triseps","is_rest_day":false,"warmup_notes":"5dk kardiyo","cooldown_notes":"5dk esneme","total_duration_min":${p.session_duration ?? 60},"notes":"...","exercises":[{"exercise_id":"UUID_BURAYA","name":"Bench Press","sets":4,"reps":"8-10","rest_seconds":90,"notes":"form notu"}]},{"day_number":2,"day_name":"Salı","focus":"Dinlenme","is_rest_day":true,"exercises":[],"warmup_notes":null,"cooldown_notes":null,"total_duration_min":null,"notes":"Aktif dinlenme"}]}],"nutrition":{"daily_calories":2200,"protein_g":165,"carb_g":220,"fat_g":73,"water_ml":2500,"meal_count":5,"meals":[{"name":"Kahvaltı","time":"07:30","foods":["Yulaf 80g","Yumurta 3"],"calories":550}],"general_notes":"..."}}
 
-Tüm ${p.days_per_week} antrenman gününü doldur. Hiçbir antrenman günü 5'ten az egzersiz içermesin.`;
+Tüm ${p.days_per_week} antrenman gününü doldur. Her günde doğru kas grubu sayısına uy.`;
 
   let raw = "";
   try {
