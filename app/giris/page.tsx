@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,6 +21,8 @@ export default function GirisPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") ?? "/dashboard";
   const supabase = createClient();
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
@@ -37,7 +39,7 @@ export default function GirisPage() {
     if (error) {
       setError("E-posta veya şifre hatalı.");
     } else {
-      router.push("/dashboard");
+      router.push(redirectTo);
       router.refresh();
     }
     setLoading(false);

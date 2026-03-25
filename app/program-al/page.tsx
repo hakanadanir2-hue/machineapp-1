@@ -1,10 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
-import { Loader2, ChevronRight, ChevronLeft, CheckCircle, Dumbbell, MessageCircle, AlertCircle } from "lucide-react";
+import { Loader2, ChevronRight, ChevronLeft, CheckCircle, Dumbbell, MessageCircle, AlertCircle, Lock } from "lucide-react";
 
 type Gender   = "male" | "female";
 type Goal     = "weight_loss"|"muscle_gain"|"toning"|"maintenance"|"boxing"|"health";
@@ -74,7 +77,10 @@ function buildProfile(form:F){
 }
 
 export default function ProgramAlPage(){
+  const router = useRouter();
+  const supabase = createClient();
   const topRef = useRef<HTMLDivElement>(null);
+  const [authUser, setAuthUser] = useState<User|null|undefined>(undefined); // undefined = loading
   const [step,setStep]=useState(0);
   const [form,setForm]=useState<F>(INIT);
   const [errs,setErrs]=useState<Partial<Record<keyof F,string>>>({});
@@ -84,6 +90,22 @@ export default function ProgramAlPage(){
   const [kvkkErr,setKvkkErr]=useState("");
   const [result,setResult]=useState<ProgramResult|null>(null);
   const [apiErr,setApiErr]=useState("");
+
+  // Auth check on mount
+  useEffect(()=>{
+    supabase.auth.getSession().then(({data})=>{
+      setAuthUser(data.session?.user ?? null);
+      // Pre-fill email/name from auth user
+      if(data.session?.user){
+        const u = data.session.user;
+        setForm(f=>({...f,
+          email: u.email ?? f.email,
+          full_name: (u.user_metadata?.full_name as string) ?? f.full_name,
+        }));
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
 
   const fset=<K extends keyof F>(k:K,v:F[K])=>setForm(f=>({...f,[k]:v}));
 
@@ -138,7 +160,7 @@ export default function ProgramAlPage(){
       const r=await fetch("/api/programs/generate",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({profile,email:form.email}),
+        body:JSON.stringify({profile, email:form.email, user_id: authUser?.id ?? null}),
         signal:AbortSignal.timeout(85000),
       });
       const text=await r.text();
@@ -181,6 +203,54 @@ export default function ProgramAlPage(){
 
   const wa=`https://wa.me/903742701455?text=${encodeURIComponent(`Merhaba, AI programım hazır. Adım: ${form.full_name}. Programı görmek istiyorum.`)}`;
 
+  // ── Auth gate ──────────────────────────────────────────────────────────
+  if (authUser === undefined) {
+    return (
+      <>
+        <Navbar/>
+        <main style={{minHeight:"100vh",background:"#0B0B0B",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <Loader2 size={32} style={{color:"#D4AF37",animation:"spin 1s linear infinite"}}/>
+        </main>
+        <Footer/>
+      </>
+    );
+  }
+
+  if (authUser === null) {
+    return (
+      <>
+        <Navbar/>
+        <main style={{minHeight:"100vh",background:"#0B0B0B",display:"flex",alignItems:"center",justifyContent:"center",padding:"2rem 1rem"}}>
+          <div style={{maxWidth:440,width:"100%",background:"#111",border:"1px solid rgba(255,255,255,.08)",borderRadius:20,padding:"2.5rem 2rem",textAlign:"center"}}>
+            <div style={{width:60,height:60,borderRadius:"50%",background:"rgba(106,13,37,.25)",border:"1px solid rgba(106,13,37,.4)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 1.5rem"}}>
+              <Lock size={24} style={{color:"#D4AF37"}}/>
+            </div>
+            <h2 style={{fontSize:"1.375rem",fontWeight:800,color:"#fff",marginBottom:"0.75rem"}}>Giriş Yapmanız Gerekiyor</h2>
+            <p style={{color:"rgba(255,255,255,.45)",fontSize:"0.9375rem",lineHeight:1.6,marginBottom:"2rem"}}>
+              Kişisel fitness ve beslenme programı oluşturmak için önce üye olmanız veya giriş yapmanız gerekiyor.
+            </p>
+            <div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
+              <button onClick={()=>router.push("/kayit?redirect=/program-al")}
+                style={{width:"100%",padding:"0.875rem",borderRadius:12,border:"none",background:"linear-gradient(135deg,#7A0D2A,#5A0920)",color:"#fff",fontWeight:800,fontSize:"1rem",cursor:"pointer"}}>
+                Üye Ol (Ücretsiz)
+              </button>
+              <button onClick={()=>router.push("/giris?redirect=/program-al")}
+                style={{width:"100%",padding:"0.875rem",borderRadius:12,border:"1px solid rgba(255,255,255,.12)",background:"transparent",color:"rgba(255,255,255,.7)",fontWeight:700,fontSize:"0.9375rem",cursor:"pointer"}}>
+                Zaten Üyeyim — Giriş Yap
+              </button>
+            </div>
+            <p style={{color:"rgba(255,255,255,.25)",fontSize:"0.8125rem",marginTop:"1.5rem",lineHeight:1.5}}>
+              Üyelik tamamen ücretsizdir. Sadece ad, e-posta ve telefon bilgisi yeterli.
+            </p>
+          </div>
+        </main>
+        <Footer/>
+        <WhatsAppButton/>
+      </>
+    );
+  }
+
+  // ── Authenticated: show form ───────────────────────────────────────────
   return(
     <>
       <Navbar/>
