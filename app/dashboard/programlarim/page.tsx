@@ -19,6 +19,7 @@ interface Program {
   approved_at: string | null;
   rejected_at: string | null;
   created_at: string;
+  nutrition_plans?: { daily_calories: number | null; protein_g: number | null; carb_g: number | null; fat_g: number | null }[];
 }
 
 interface ProgramDetail {
@@ -98,7 +99,7 @@ export default function ProgramlarimPage() {
 
     const { data } = await supabase
       .from("programs")
-      .select("id,title,summary,goal,fitness_level,days_per_week,duration_weeks,status,admin_notes,rejection_reason,approved_at,rejected_at,created_at")
+      .select("id,title,summary,goal,fitness_level,days_per_week,duration_weeks,status,admin_notes,rejection_reason,approved_at,rejected_at,created_at,nutrition_plans(daily_calories,protein_g,carb_g,fat_g)")
       .eq("user_id", session.user.id)
       .order("created_at", { ascending: false });
 
@@ -125,7 +126,7 @@ export default function ProgramlarimPage() {
           <h1 style={{ fontSize: 20, fontWeight: 900, color: "#fff", marginBottom: 4 }}>Programlarım</h1>
           <p style={{ fontSize: 12, color: "rgba(255,255,255,.35)" }}>AI tarafından sana özel hazırlanan programlar</p>
         </div>
-        <Link href="/program-basvuru" style={{ textDecoration: "none" }}>
+        <Link href="/program-al" style={{ textDecoration: "none" }}>
           <button style={{ display: "flex", alignItems: "center", gap: 6, background: "#7A0D2A", border: "none", color: "#fff", padding: "9px 16px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
             <Plus size={14} /> Yeni Program
           </button>
@@ -139,7 +140,7 @@ export default function ProgramlarimPage() {
           <Dumbbell size={40} color="rgba(255,255,255,.1)" style={{ margin: "0 auto 16px" }} />
           <div style={{ fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,.4)", marginBottom: 8 }}>Henüz programın yok</div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,.2)", marginBottom: 20 }}>Fiziksel verilerini girerek AI kişisel programını oluştursun</div>
-          <Link href="/program-basvuru" style={{ textDecoration: "none" }}>
+          <Link href="/program-al" style={{ textDecoration: "none" }}>
             <button style={{ background: "#7A0D2A", border: "none", color: "#fff", padding: "10px 20px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
               Program Al
             </button>
@@ -181,17 +182,26 @@ export default function ProgramlarimPage() {
                     <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)", marginTop: 8 }}>
                       {new Date(p.created_at).toLocaleDateString("tr-TR")} · {p.days_per_week} gün/hafta · {p.duration_weeks} hafta
                     </div>
+
+                    {/* Makro özeti */}
+                    {p.nutrition_plans?.[0]?.daily_calories && (
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,.3)", marginTop: 6 }}>
+                        🔥 {p.nutrition_plans[0].daily_calories} kcal &nbsp;·&nbsp;
+                        💪 {p.nutrition_plans[0].protein_g}g protein &nbsp;·&nbsp;
+                        🍞 {p.nutrition_plans[0].carb_g}g karb
+                      </div>
+                    )}
                   </div>
 
-                  {(p.status === "approved" || p.status === "active") && (
-                    <button onClick={() => openDetail(p.id)} style={{
-                      display: "flex", alignItems: "center", gap: 5, background: "rgba(74,222,128,.1)",
-                      border: "1px solid rgba(74,222,128,.2)", color: "#4ade80",
-                      padding: "8px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 700,
-                    }}>
-                      <Eye size={13} /> Programı Gör
-                    </button>
-                  )}
+                  <button onClick={() => openDetail(p.id)} style={{
+                    display: "flex", alignItems: "center", gap: 5,
+                    background: (p.status === "approved" || p.status === "active") ? "rgba(74,222,128,.1)" : "rgba(250,204,21,.08)",
+                    border: `1px solid ${(p.status === "approved" || p.status === "active") ? "rgba(74,222,128,.2)" : "rgba(250,204,21,.15)"}`,
+                    color: (p.status === "approved" || p.status === "active") ? "#4ade80" : "#facc15",
+                    padding: "8px 14px", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 700, flexShrink: 0,
+                  }}>
+                    <Eye size={13} /> {(p.status === "approved" || p.status === "active") ? "Programı Gör" : "Önizleme"}
+                  </button>
                 </div>
               </div>
             );
@@ -213,6 +223,15 @@ export default function ProgramlarimPage() {
               <div style={{ padding: 40, textAlign: "center", color: "rgba(255,255,255,.3)" }}>Yükleniyor...</div>
             ) : detail ? (
               <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 20 }}>
+                {detail.program.status === "pending" && (
+                  <div style={{ background: "rgba(250,204,21,.07)", border: "1px solid rgba(250,204,21,.2)", borderRadius: 10, padding: "10px 14px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <span style={{ fontSize: 16, flexShrink: 0 }}>⏳</span>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#facc15", marginBottom: 2 }}>Uzman incelemesi devam ediyor</div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,.4)", lineHeight: 1.5 }}>Program içeriği oluşturuldu, uzman onayı sonrası aktif hale gelecek.</div>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <div style={{ fontWeight: 800, fontSize: 17, color: "#fff", marginBottom: 6 }}>{detail.program.title}</div>
                   <p style={{ color: "rgba(255,255,255,.45)", fontSize: 13, lineHeight: 1.6, margin: 0 }}>{detail.program.summary}</p>

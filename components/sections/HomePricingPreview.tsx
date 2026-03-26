@@ -4,9 +4,9 @@ import Link from "next/link";
 import { Check, ArrowRight, Star } from "lucide-react";
 
 const plans = [
-  { name: "Aylık", price: "2.000", period: "/ ay", features: ["Sınırsız Fitness", "Soyunma Odası", "Sauna"], highlight: false },
-  { name: "3 Aylık", price: "4.200", period: "/ 3 ay", features: ["Sınırsız Fitness", "Soyunma Odası", "Sauna", "1 Ücretsiz PT"], highlight: true, badge: "En Popüler" },
-  { name: "6 Aylık", price: "7.000", period: "/ 6 ay", features: ["Sınırsız Fitness", "Soyunma Odası", "Sauna", "2 Ücretsiz PT", "Program Analizi"], highlight: false },
+  { name: "Aylık", price: "2.000", period: "/ ay", features: ["Sınırsız Fitness", "Soyunma Odası"], highlight: false },
+  { name: "3 Aylık", price: "4.200", period: "/ 3 ay", features: ["Sınırsız Fitness", "Soyunma Odası", "1 Ücretsiz PT"], highlight: true, badge: "En Popüler" },
+  { name: "6 Aylık", price: "7.000", period: "/ 6 ay", features: ["Sınırsız Fitness", "Soyunma Odası", "2 Ücretsiz PT", "Program Analizi"], highlight: false },
 ];
 
 export default function HomePricingPreview() {

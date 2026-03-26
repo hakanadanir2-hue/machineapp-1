@@ -12,7 +12,7 @@ const fitnessPacks = [
     features: [
       "Sınırsız Fitness Erişimi",
       "Soyunma Odası & Duş",
-      "Sauna",
+      ,
       "Ücretsiz Program Danışması",
     ],
     popular: false,
@@ -25,7 +25,7 @@ const fitnessPacks = [
     features: [
       "Sınırsız Fitness Erişimi",
       "Soyunma Odası & Duş",
-      "Sauna",
+      ,
       "1 Ücretsiz PT Seansı",
       "Vücut Ölçüm Analizi",
     ],
@@ -39,7 +39,7 @@ const fitnessPacks = [
     features: [
       "Sınırsız Fitness Erişimi",
       "Soyunma Odası & Duş",
-      "Sauna",
+      ,
       "2 Ücretsiz PT Seansı",
       "Vücut Ölçüm Analizi",
       "Beslenme Danışması",
@@ -104,7 +104,9 @@ export default function Pricing({ plans, whatsapp = "903742701455" }: PricingPro
 
   const useFitness = dbFitness.length > 0 ? dbFitness.map(p => ({
     name: p.name, price: p.price.toLocaleString("tr-TR"), period: "",
-    note: p.description, features: p.features ?? [], popular: p.is_popular,
+    note: p.description,
+    features: (p.features ?? []).filter(f => f && !/sauna/i.test(f)),
+    popular: p.is_popular,
   })) : fitnessPacks;
 
   const usePT = dbPT.length > 0 ? dbPT.map(p => ({
@@ -203,47 +205,50 @@ export default function Pricing({ plans, whatsapp = "903742701455" }: PricingPro
       {/* PT Packs */}
       <section style={{ marginBottom: "3.5rem" }}>
         <SectionTitle label="Birebir Antrenman" title="Personal Trainer Paketleri" />
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
           {usePT.map((p, i) => (
             <motion.div
               key={p.name}
-              initial={{ opacity: 0, x: -16 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.07 }}
               style={{
+                position: "relative",
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "1.125rem 1.375rem",
-                borderRadius: "14px",
-                background: p.popular ? "rgba(106,13,37,0.15)" : "#1A1A1A",
-                border: p.popular ? "1px solid rgba(106,13,37,0.4)" : "1px solid #2A2A2A",
-                gap: "1rem",
-                flexWrap: "wrap",
+                flexDirection: "column",
+                borderRadius: "18px",
+                padding: "1.75rem",
+                background: p.popular ? "#6A0D25" : "#1A1A1A",
+                border: p.popular ? "1px solid rgba(212,175,55,0.4)" : "1px solid #2A2A2A",
+                marginTop: p.popular ? "12px" : "0",
               }}
             >
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", marginBottom: "0.25rem" }}>
-                  <span style={{ color: "#fff", fontWeight: 700, fontSize: "0.9375rem" }}>{p.name}</span>
-                  {p.popular && (
-                    <span style={{ padding: "0.15rem 0.625rem", background: "#D4AF37", color: "#0B0B0B", fontSize: "0.625rem", fontWeight: 700, borderRadius: "9999px" }}>Popüler</span>
-                  )}
+              {p.popular && (
+                <div style={{ position: "absolute", top: "-14px", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.25rem 0.875rem", background: "#D4AF37", color: "#0B0B0B", fontSize: "0.6875rem", fontWeight: 700, borderRadius: "9999px" }}>
+                    <Star style={{ width: "10px", height: "10px" }} /> En Popüler
+                  </span>
                 </div>
-                <p style={{ color: p.popular ? "#D4AF37" : "rgba(255,255,255,0.4)", fontSize: "0.8125rem" }}>{p.per}</p>
+              )}
+              <p style={{ color: p.popular ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.5)", fontSize: "0.875rem", marginBottom: "0.375rem" }}>{p.name}</p>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "0.25rem", marginBottom: "0.375rem" }}>
+                <span style={{ fontSize: "2rem", fontWeight: 800, color: "#fff", fontFamily: "var(--font-heading)" }}>₺{p.price}</span>
               </div>
-              <div style={{ display: "flex", flexDirection:"column", alignItems: "flex-end", gap: "0.5rem" }}>
-                <span style={{ color: "#fff", fontWeight: 800, fontSize: "1.25rem", fontFamily: "var(--font-heading)" }}>₺{p.price}</span>
-                <Link
-                  href="/randevu"
-                  style={{ padding: "0.5rem 1.125rem", background: "#6A0D25", color: "#fff", fontSize: "0.8125rem", fontWeight: 700, borderRadius: "10px", border: "1px solid rgba(212,175,55,0.3)", textDecoration: "none", whiteSpace: "nowrap" }}
-                >
-                  Rezerve Et
-                </Link>
-                <a href={waReceipt(`PT ${p.name}`, p.price)} target="_blank" rel="noopener noreferrer"
-                  style={{ display:"flex", alignItems:"center", gap:"0.3rem", padding:"0.375rem 0.75rem", borderRadius:"8px", fontSize:"0.7rem", fontWeight:600, textDecoration:"none", background:"rgba(37,211,102,0.1)", color:"#4ade80", border:"1px solid rgba(37,211,102,0.2)", whiteSpace:"nowrap" }}>
-                  <MessageCircle style={{ width:12, height:12 }} /> Dekontu İlet
-                </a>
-              </div>
+              <p style={{ color: p.popular ? "#D4AF37" : "rgba(255,255,255,0.4)", fontSize: "0.8125rem", marginBottom: "1.5rem", flex: 1 }}>{p.per}</p>
+              <Link
+                href="/randevu"
+                style={{ display: "block", textAlign: "center", padding: "0.75rem", borderRadius: "12px", fontSize: "0.875rem", fontWeight: 700, textDecoration: "none", background: p.popular ? "#D4AF37" : "#2A2A2A", color: p.popular ? "#0B0B0B" : "#fff", border: p.popular ? "none" : "1px solid #3A3A3A", marginBottom: "0.5rem" }}
+              >
+                Rezerve Et
+              </Link>
+              <a
+                href={waReceipt(`PT ${p.name}`, p.price)}
+                target="_blank" rel="noopener noreferrer"
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", padding: "0.5rem", borderRadius: "10px", fontSize: "0.75rem", fontWeight: 600, textDecoration: "none", background: "rgba(37,211,102,0.1)", color: "#4ade80", border: "1px solid rgba(37,211,102,0.2)" }}
+              >
+                <MessageCircle style={{ width: "13px", height: "13px" }} />
+                Ödeme Dekontu Gönder
+              </a>
             </motion.div>
           ))}
         </div>
@@ -252,47 +257,50 @@ export default function Pricing({ plans, whatsapp = "903742701455" }: PricingPro
       {/* Boks Packs */}
       <section style={{ marginBottom: "3.5rem" }}>
         <SectionTitle label="Dövüş Sporları" title="Boks / Kickboks / Muay Thai" />
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
           {useBoks.map((p, i) => (
             <motion.div
               key={p.name}
-              initial={{ opacity: 0, x: -16 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.07 }}
               style={{
+                position: "relative",
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "1.125rem 1.375rem",
-                borderRadius: "14px",
-                background: p.popular ? "rgba(106,13,37,0.15)" : "#1A1A1A",
-                border: p.popular ? "1px solid rgba(106,13,37,0.4)" : "1px solid #2A2A2A",
-                gap: "1rem",
-                flexWrap: "wrap",
+                flexDirection: "column",
+                borderRadius: "18px",
+                padding: "1.75rem",
+                background: p.popular ? "#6A0D25" : "#1A1A1A",
+                border: p.popular ? "1px solid rgba(212,175,55,0.4)" : "1px solid #2A2A2A",
+                marginTop: p.popular ? "12px" : "0",
               }}
             >
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", marginBottom: "0.25rem" }}>
-                  <span style={{ color: "#fff", fontWeight: 700, fontSize: "0.9375rem" }}>{p.name}</span>
-                  {p.popular && (
-                    <span style={{ padding: "0.15rem 0.625rem", background: "#D4AF37", color: "#0B0B0B", fontSize: "0.625rem", fontWeight: 700, borderRadius: "9999px" }}>Popüler</span>
-                  )}
+              {p.popular && (
+                <div style={{ position: "absolute", top: "-14px", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.25rem 0.875rem", background: "#D4AF37", color: "#0B0B0B", fontSize: "0.6875rem", fontWeight: 700, borderRadius: "9999px" }}>
+                    <Star style={{ width: "10px", height: "10px" }} /> En Popüler
+                  </span>
                 </div>
-                <p style={{ color: p.popular ? "#D4AF37" : "rgba(255,255,255,0.4)", fontSize: "0.8125rem" }}>{p.per}</p>
+              )}
+              <p style={{ color: p.popular ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.5)", fontSize: "0.875rem", marginBottom: "0.375rem" }}>{p.name}</p>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "0.25rem", marginBottom: "0.375rem" }}>
+                <span style={{ fontSize: "2rem", fontWeight: 800, color: "#fff", fontFamily: "var(--font-heading)" }}>₺{p.price}</span>
               </div>
-              <div style={{ display: "flex", flexDirection:"column", alignItems: "flex-end", gap: "0.5rem" }}>
-                <span style={{ color: "#fff", fontWeight: 800, fontSize: "1.25rem", fontFamily: "var(--font-heading)" }}>₺{p.price}</span>
-                <Link
-                  href="/randevu"
-                  style={{ padding: "0.5rem 1.125rem", background: "#6A0D25", color: "#fff", fontSize: "0.8125rem", fontWeight: 700, borderRadius: "10px", border: "1px solid rgba(212,175,55,0.3)", textDecoration: "none", whiteSpace: "nowrap" }}
-                >
-                  Rezerve Et
-                </Link>
-                <a href={waReceipt(`Boks ${p.name}`, p.price)} target="_blank" rel="noopener noreferrer"
-                  style={{ display:"flex", alignItems:"center", gap:"0.3rem", padding:"0.375rem 0.75rem", borderRadius:"8px", fontSize:"0.7rem", fontWeight:600, textDecoration:"none", background:"rgba(37,211,102,0.1)", color:"#4ade80", border:"1px solid rgba(37,211,102,0.2)", whiteSpace:"nowrap" }}>
-                  <MessageCircle style={{ width:12, height:12 }} /> Dekontu İlet
-                </a>
-              </div>
+              <p style={{ color: p.popular ? "#D4AF37" : "rgba(255,255,255,0.4)", fontSize: "0.8125rem", marginBottom: "1.5rem", flex: 1 }}>{p.per}</p>
+              <Link
+                href="/randevu"
+                style={{ display: "block", textAlign: "center", padding: "0.75rem", borderRadius: "12px", fontSize: "0.875rem", fontWeight: 700, textDecoration: "none", background: p.popular ? "#D4AF37" : "#2A2A2A", color: p.popular ? "#0B0B0B" : "#fff", border: p.popular ? "none" : "1px solid #3A3A3A", marginBottom: "0.5rem" }}
+              >
+                Rezerve Et
+              </Link>
+              <a
+                href={waReceipt(`Boks ${p.name}`, p.price)}
+                target="_blank" rel="noopener noreferrer"
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", padding: "0.5rem", borderRadius: "10px", fontSize: "0.75rem", fontWeight: 600, textDecoration: "none", background: "rgba(37,211,102,0.1)", color: "#4ade80", border: "1px solid rgba(37,211,102,0.2)" }}
+              >
+                <MessageCircle style={{ width: "13px", height: "13px" }} />
+                Ödeme Dekontu Gönder
+              </a>
             </motion.div>
           ))}
         </div>

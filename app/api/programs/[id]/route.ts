@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { sendApprovedProgramEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
@@ -9,10 +10,22 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  const supabase = await createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return NextResponse.json({ error: "Giriş gerekli" }, { status: 401 });
+
   const admin = createAdminClient();
 
   const { data: program } = await admin.from("programs").select("*").eq("id", id).single();
   if (!program) return NextResponse.json({ error: "Bulunamadı" }, { status: 404 });
+
+  if (program.user_id !== session.user.id) {
+    const { data: profile } = await admin.from("profiles").select("role").eq("id", session.user.id).maybeSingle();
+    if (profile?.role !== "admin") {
+      return NextResponse.json({ error: "Bu programa erişim izniniz yok" }, { status: 403 });
+    }
+  }
 
   const { data: profile } = await admin.from("user_profiles").select("*").eq("id", program.profile_id).single();
   const { data: weeks }   = await admin.from("program_weeks").select("*").eq("program_id", id).order("week_number");
