@@ -1,19 +1,46 @@
 import type { NextConfig } from "next";
 
+const SUPABASE_HOST = "nyobwxhyoxtbtmkmrwyc.supabase.co";
+
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  `img-src 'self' data: blob: https://images.unsplash.com https://${SUPABASE_HOST}`,
+  "font-src 'self' data:",
+  `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST}`,
+  "frame-src 'none'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+  "upgrade-insecure-requests",
+].join("; ");
+
 const nextConfig: NextConfig = {
-  env: {
-    NEXT_PUBLIC_SUPABASE_URL: "https://nyobwxhyoxtbtmkmrwyc.supabase.co",
-    NEXT_PUBLIC_SUPABASE_ANON_KEY:
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55b2J3eGh5b3h0YnRta21yd3ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2ODU1OTIsImV4cCI6MjA4OTI2MTU5Mn0.Oe65ADT54v6hVHyFbor_yLtiBu_zWnNnyVhS_C-Civo",
-    NEXT_PUBLIC_WHATSAPP_NUMBER: "905xxxxxxxxx",
-    NEXT_PUBLIC_SITE_URL: "https://machinegym.com.tr",
-  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
-      { protocol: "https", hostname: "nyobwxhyoxtbtmkmrwyc.supabase.co" },
+      { protocol: "https", hostname: SUPABASE_HOST },
     ],
   },
+
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "Content-Security-Policy",   value: CSP },
+          { key: "X-Frame-Options",            value: "DENY" },
+          { key: "X-Content-Type-Options",     value: "nosniff" },
+          { key: "Referrer-Policy",            value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy",         value: "camera=(), microphone=(), geolocation=()" },
+          { key: "X-DNS-Prefetch-Control",     value: "on" },
+        ],
+      },
+    ];
+  },
+
   typescript: { ignoreBuildErrors: true },
 };
 
