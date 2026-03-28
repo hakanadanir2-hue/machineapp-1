@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { sendApprovedProgramEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
@@ -50,6 +51,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
   const { id } = await params;
   const { action, admin_notes, rejection_reason } = await req.json().catch(() => ({})) as {
     action?: string; admin_notes?: string; rejection_reason?: string;

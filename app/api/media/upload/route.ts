@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -7,19 +7,21 @@ export const maxDuration = 30;
 
 const BUCKET = "gallery";
 const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "image/avif"];
-const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_SIZE = 10 * 1024 * 1024;
+const SAFE_FOLDER = /^[a-z0-9_-]{1,40}$/;
 
 export async function POST(req: NextRequest) {
-  // Auth check — must be logged in admin
-  const userClient = await createClient();
-  const { data: { session } } = await userClient.auth.getSession();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
 
   const formData = await req.formData();
   const files = formData.getAll("files") as File[];
-  const folder = (formData.get("folder") as string) || "";
+  const rawFolder = (formData.get("folder") as string) || "";
+  const folder = rawFolder ? rawFolder.replace(/[^a-z0-9_-]/gi, "").slice(0, 40) : "";
+
+  if (rawFolder && !SAFE_FOLDER.test(rawFolder)) {
+    return NextResponse.json({ error: "Geçersiz klasör adı" }, { status: 400 });
+  }
 
   if (!files.length) {
     return NextResponse.json({ error: "No files provided" }, { status: 400 });
@@ -34,7 +36,7 @@ export async function POST(req: NextRequest) {
     admin = null;
   }
 
-  const client = admin ?? userClient;
+  const client = admin;
   const results: Array<{ name: string; url: string; error?: string }> = [];
 
   for (const file of files) {

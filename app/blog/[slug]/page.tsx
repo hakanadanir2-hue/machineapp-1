@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeHtml } from "@/lib/sanitize";
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -142,7 +143,7 @@ export default async function BlogPostPage({ params }: Props) {
             <div
               style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.9375rem", lineHeight: 1.8 }}
               className="blog-content"
-              dangerouslySetInnerHTML={{ __html: post.content || "" }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content || "") }}
             />
 
             <style>{`

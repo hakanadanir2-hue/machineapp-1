@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createClient as createServerClient } from "@/lib/supabase/server";
 import crypto from "crypto";
 
 const supabase = createClient(
@@ -7,8 +8,11 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// PayTR iframe token oluştur
 export async function POST(req: NextRequest) {
+  const sc = await createServerClient();
+  const { data: { user } } = await sc.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Giriş gerekli" }, { status: 401 });
+
   try {
     const body = await req.json();
     const { order_id, amount, user_email, user_name, user_phone, user_address, cart_items, user_ip } = body;

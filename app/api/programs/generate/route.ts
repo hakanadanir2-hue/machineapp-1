@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { buildInjuryContext, checkRedFlags, type RedFlagInput } from "@/lib/injury_rules";
 
 export const runtime     = "nodejs";
@@ -285,6 +286,10 @@ export async function POST(req: NextRequest) {
 
   if (!body?.profile) return NextResponse.json({ error: "Profile verisi eksik" }, { status: 400 });
 
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const verifiedUserId = user?.id ?? null;
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "OPENAI_API_KEY ayarlı değil" }, { status: 500 });
 
@@ -312,8 +317,8 @@ export async function POST(req: NextRequest) {
   );
 
   // Get recent exercises for variety
-  const recentExercises = body.user_id
-    ? await getRecentExercises(admin, body.user_id)
+  const recentExercises = verifiedUserId
+    ? await getRecentExercises(admin, verifiedUserId)
     : [];
 
   const dbExercises = await fetchExercisesForProfile(admin, p, bmi);
@@ -459,7 +464,7 @@ JSON FORMAT:
   const week = prog.weeks[0];
 
   const { data: saved, error: progErr } = await admin.from("programs").insert({
-    user_id:         body.user_id ?? null,
+    user_id:         verifiedUserId,
     title:           "Fitness ve Beslenme Programı",
     summary:         prog.summary,
     duration_weeks:  1,
@@ -535,9 +540,9 @@ JSON FORMAT:
   }
 
   // Save program history for diversity (async, non-blocking)
-  if (body.user_id) {
+  if (verifiedUserId) {
     const exerciseNames = allExercises.map(e => e.exercise_name);
-    saveHistory(admin, body.user_id, programId, p, exerciseNames).catch(() => null);
+    saveHistory(admin, verifiedUserId, programId, p, exerciseNames).catch(() => null);
   }
 
   return NextResponse.json({

@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { generateOrderId } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
+  const sc = await createClient();
+  const { data: { user } } = await sc.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Giriş gerekli" }, { status: 401 });
+
   try {
     const body = await request.json();
     const { type, amount, email, full_name } = body;

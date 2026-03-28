@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendAppointmentNotification } from "@/lib/email";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  if (!rateLimit(ip, 5, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: "Çok fazla istek. 1 saat sonra tekrar dene." }, { status: 429 });
+  }
+
   const body = await req.json().catch(() => null) as {
     full_name: string;
     email: string;

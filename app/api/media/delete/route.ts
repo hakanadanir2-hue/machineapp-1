@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(req: NextRequest) {
-  const userClient = await createClient();
-  const { data: { session } } = await userClient.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
 
   const { path } = await req.json();
   if (!path) return NextResponse.json({ error: "No path" }, { status: 400 });
 
   let admin;
   try { admin = createAdminClient(); } catch { admin = null; }
-  const client = admin ?? userClient;
+  const client = admin;
 
   const { error } = await (client as ReturnType<typeof createAdminClient>).storage
     .from("gallery")

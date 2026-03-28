@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -58,8 +59,10 @@ async function fetchPage(offset: number, limit: number): Promise<WgerPage> {
 
 // ── POST ───────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  console.log("IMPORT START");
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
 
+  console.log("IMPORT START");
   const { searchParams } = new URL(req.url);
   const rawLimit = searchParams.get("limit");
   const maxItems = rawLimit ? Math.max(1, parseInt(rawLimit, 10)) : 99999;
@@ -311,6 +314,9 @@ export async function POST(req: NextRequest) {
 
 // ── GET ────────────────────────────────────────────────────────────────────
 export async function GET() {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
   const admin = createAdminClient();
   const [logsRes, countRes] = await Promise.all([
     admin.from("wger_import_logs").select("*").order("started_at", { ascending: false }).limit(10),
