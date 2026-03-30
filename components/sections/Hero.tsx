@@ -89,7 +89,7 @@ export default function Hero({
         <div style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none", overflow: "hidden" }}>
           <iframe
             src={youtube!.url}
-            allow="autoplay; muted; encrypted-media; picture-in-picture"
+            allow="autoplay; encrypted-media; picture-in-picture"
             allowFullScreen
             style={{
               position: "absolute",

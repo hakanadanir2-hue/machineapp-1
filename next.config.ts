@@ -11,7 +11,7 @@ const CSP = [
   `img-src 'self' data: blob: https://images.unsplash.com https://${SUPABASE_HOST} https://www.google.com https://www.google.com.tr https://www.googletagmanager.com`,
   "font-src 'self' data:",
   `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} ${GOOGLE_HOSTS}`,
-  `frame-src https://www.paytr.com https://www.googletagmanager.com`,
+  `frame-src https://www.paytr.com https://www.googletagmanager.com https://www.youtube.com https://www.youtube-nocookie.com`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
