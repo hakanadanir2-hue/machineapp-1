@@ -2,14 +2,16 @@ import type { NextConfig } from "next";
 
 const SUPABASE_HOST = "nyobwxhyoxtbtmkmrwyc.supabase.co";
 
+const GOOGLE_HOSTS = "https://www.googletagmanager.com https://www.google-analytics.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://googlesyndication.com";
+
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline' ${GOOGLE_HOSTS}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: https://images.unsplash.com https://${SUPABASE_HOST}`,
+  `img-src 'self' data: blob: https://images.unsplash.com https://${SUPABASE_HOST} https://www.google.com https://www.google.com.tr https://www.googletagmanager.com`,
   "font-src 'self' data:",
-  `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST}`,
-  "frame-src 'none'",
+  `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} ${GOOGLE_HOSTS}`,
+  `frame-src https://www.paytr.com https://www.googletagmanager.com`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

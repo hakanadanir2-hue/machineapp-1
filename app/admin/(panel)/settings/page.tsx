@@ -256,13 +256,20 @@ export default function SettingsPage() {
                   <textarea value={get("default_meta_description")} onChange={e => set("default_meta_description", e.target.value)} style={{ ...TS, minHeight: 80 }} placeholder="Kısa site açıklaması..." />
                   <p style={{ fontSize: 11, color: get("default_meta_description").length > 160 ? "#f87171" : "rgba(255,255,255,0.2)", marginTop: 4 }}>{get("default_meta_description").length}/160</p>
                 </div>
-                <Field label="Google Analytics ID" k="google_analytics_id" placeholder="G-XXXXXXXXXX" />
+                <Row2>
+                  <Field label="Google Analytics 4 ID" k="google_analytics_id" placeholder="G-XXXXXXXXXX" />
+                  <Field label="Google Ads (AW-) ID" k="google_ads_id" placeholder="AW-XXXXXXXXXX" />
+                </Row2>
+                <Field label="Google Tag Manager ID" k="gtm_id" placeholder="GTM-XXXXXXX" />
+                <div style={{ background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.12)", borderRadius: 10, padding: "10px 14px", fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.7 }}>
+                  <strong style={{ color: "#D4AF37" }}>GA4</strong> → Google Analytics paneli &nbsp;|&nbsp; <strong style={{ color: "#D4AF37" }}>AW-</strong> → Google Ads → Araçlar → Dönüşümler &nbsp;|&nbsp; <strong style={{ color: "#D4AF37" }}>GTM</strong> → tagmanager.google.com
+                </div>
                 <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px", fontSize: 12, color: "rgba(255,255,255,0.3)" }}>
                   Sayfa bazlı detaylı SEO için: <strong style={{ color: "#D4AF37" }}>İçerik → SEO Yönetimi</strong>
                 </div>
               </div>
               <div style={{ marginTop: 18, display: "flex", justifyContent: "flex-end" }}>
-                <Btn sk="seo" keys={["default_meta_title","default_meta_description","google_analytics_id"]} />
+                <Btn sk="seo" keys={["default_meta_title","default_meta_description","google_analytics_id","google_ads_id","gtm_id"]} />
               </div>
             </div>
           )}

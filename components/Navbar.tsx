@@ -6,6 +6,17 @@ import { usePathname } from "next/navigation";
 import { Menu, X, Dumbbell, ShoppingCart } from "lucide-react";
 import { useCart } from "@/lib/cartContext";
 
+function useSiteConfig() {
+  const [config, setConfig] = useState<{ logoUrl?: string; siteName?: string }>({});
+  useEffect(() => {
+    try {
+      const el = document.getElementById("__site_config");
+      if (el?.textContent) setConfig(JSON.parse(el.textContent));
+    } catch {}
+  }, []);
+  return config;
+}
+
 const NAV_LINKS = [
   { href: "/hizmetler", label: "Hizmetler" },
   { href: "/fiyatlar", label: "Fiyatlar" },
@@ -21,6 +32,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
   const { totalItems } = useCart();
+  const { logoUrl, siteName } = useSiteConfig();
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 40);
@@ -58,12 +70,19 @@ export default function Navbar() {
         >
           {/* Logo */}
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.5rem", textDecoration: "none", flexShrink: 0 }}>
-            <div style={{ width: "34px", height: "34px", background: "#6A0D25", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Dumbbell style={{ width: "18px", height: "18px", color: "#fff" }} />
-            </div>
-            <span style={{ fontWeight: 800, color: "#fff", fontSize: "1rem", letterSpacing: "0.04em", fontFamily: "var(--font-heading)" }}>
-              MACHINE <span style={{ color: "#D4AF37" }}>GYM</span>
-            </span>
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt={siteName || "Machine Gym"} style={{ height: "34px", width: "auto", objectFit: "contain" }} />
+            ) : (
+              <>
+                <div style={{ width: "34px", height: "34px", background: "#6A0D25", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Dumbbell style={{ width: "18px", height: "18px", color: "#fff" }} />
+                </div>
+                <span style={{ fontWeight: 800, color: "#fff", fontSize: "1rem", letterSpacing: "0.04em", fontFamily: "var(--font-heading)" }}>
+                  {siteName ? siteName.toUpperCase() : <>MACHINE <span style={{ color: "#D4AF37" }}>GYM</span></>}
+                </span>
+              </>
+            )}
           </Link>
 
           {/* Desktop Nav */}

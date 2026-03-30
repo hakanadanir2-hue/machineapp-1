@@ -25,17 +25,11 @@ export const metadata: Metadata = {
   description:
     "Bolu'nun en disiplinli fitness & boks salonu. Kişisel antrenör, boks, kickboks, muay thai dersleri. Bilimsel programlarla hedeflerine ulaş.",
   keywords: [
-    "machine gym",
-    "bolu fitness",
-    "bolu spor salonu",
-    "boks dersi bolu",
-    "personal trainer bolu",
-    "kickboks muay thai",
+    "machine gym", "bolu fitness", "bolu spor salonu",
+    "boks dersi bolu", "personal trainer bolu", "kickboks muay thai",
   ],
   openGraph: {
-    type: "website",
-    locale: "tr_TR",
-    url: "https://machinegym.com.tr",
+    type: "website", locale: "tr_TR", url: "https://machinegym.com.tr",
     siteName: "Machine Gym",
     title: "Machine Gym | Bolu'nun Premium Fitness & Boks Salonu",
     description: "Bolu'nun en disiplinli fitness & boks salonu.",
@@ -45,23 +39,36 @@ export const metadata: Metadata = {
     title: "Machine Gym | Bolu",
     description: "Bolu'nun en disiplinli fitness & boks salonu.",
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  robots: { index: true, follow: true },
 };
 
 export default async function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   const settings = await getSettings();
+
+  const logoUrl    = s(settings, "logo_url", "");
+  const faviconUrl = s(settings, "favicon_url", "/favicon.ico");
+  const siteName   = s(settings, "site_name", "Machine Gym");
+  const gaId       = s(settings, "google_analytics_id", "");
+  const adsId      = s(settings, "google_ads_id", "");
+  const gtmId      = s(settings, "gtm_id", "");
+
+  const siteConfig = JSON.stringify({ logoUrl, siteName });
+
+  const gtagIds = [gaId, adsId].filter(Boolean);
+  const gtagConfigLines = gtagIds.map(id => `gtag('config','${id}');`).join("");
+  const gtagScript = gtagIds.length > 0
+    ? `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());${gtagConfigLines}`
+    : "";
+  const gtmScript = gtmId
+    ? `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${gtmId}');`
+    : "";
 
   const localBusinessSchema = {
     "@context": "https://schema.org",
     "@type": ["LocalBusiness", "SportsActivityLocation"],
-    name: s(settings, "site_name", "Machine Gym"),
+    name: siteName,
     alternateName: "Machine Gym Bolu",
     description: "Bolu'nun en disiplinli fitness & boks salonu. Kişisel antrenör, boks, kickboks, muay thai dersleri. 600m² modern tesis.",
     url: s(settings, "site_url", "https://www.machinegym.biz"),
@@ -101,12 +108,46 @@ export default async function RootLayout({
   return (
     <html lang="tr" className={`${inter.variable} ${montserrat.variable}`}>
       <head>
+        {/* Favicon */}
+        <link rel="icon" href={faviconUrl} />
+
+        {/* Google Tag Manager */}
+        {gtmId && (
+          <script dangerouslySetInnerHTML={{ __html: gtmScript }} />
+        )}
+
+        {/* Google Analytics 4 + Google Ads */}
+        {gtagIds.length > 0 && (
+          <>
+            <script async src={`https://www.googletagmanager.com/gtag/js?id=${gtagIds[0]}`} />
+            <script dangerouslySetInnerHTML={{ __html: gtagScript }} />
+          </>
+        )}
+
+        {/* Structured Data */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
         />
+
+        {/* Site config for client components */}
+        <script
+          id="__site_config"
+          type="application/json"
+          dangerouslySetInnerHTML={{ __html: siteConfig }}
+        />
       </head>
       <body className="min-h-screen bg-dark text-white antialiased">
+        {/* GTM noscript fallback */}
+        {gtmId && (
+          <noscript>
+            <iframe
+              src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
+              height="0" width="0"
+              style={{ display: "none", visibility: "hidden" }}
+            />
+          </noscript>
+        )}
         <CartProvider>
           <AnnouncementBar />
           {children}
