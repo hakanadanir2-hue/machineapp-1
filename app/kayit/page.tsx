@@ -46,6 +46,14 @@ function KayitForm() {
     if (signUpError) {
       setError(signUpError.message);
     } else if (authData.user) {
+      // Resend ile hoşgeldin maili gönder (hata olsa bile devam et)
+      try {
+        await fetch("/api/auth/welcome-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: data.email, fullName: data.full_name }),
+        });
+      } catch {}
       setSuccess(true);
       setTimeout(() => router.push(redirectTo), 2000);
     }

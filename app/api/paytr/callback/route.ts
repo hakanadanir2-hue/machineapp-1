@@ -31,11 +31,24 @@ export async function POST(req: NextRequest) {
       return new NextResponse("PAYTR_INVALID", { status: 400 });
     }
 
-    // Sipariş güncelle
+    // Mağaza siparişleri güncelle
     if (status === "success") {
       await supabase.from("orders").update({ status: "paid", paid_at: new Date().toISOString() }).eq("paytr_order_id", merchant_oid);
     } else {
       await supabase.from("orders").update({ status: "failed" }).eq("paytr_order_id", merchant_oid);
+    }
+
+    // Program talebi güncelle (PR- prefix ile başlayanlar)
+    if (merchant_oid.startsWith("PR-")) {
+      if (status === "success") {
+        await supabase.from("program_requests")
+          .update({ payment_status: "paid", paid_at: new Date().toISOString(), status: "waiting" })
+          .eq("paytr_order_id", merchant_oid);
+      } else {
+        await supabase.from("program_requests")
+          .update({ payment_status: "failed" })
+          .eq("paytr_order_id", merchant_oid);
+      }
     }
 
     return new NextResponse("OK", { status: 200 });

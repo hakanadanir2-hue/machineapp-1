@@ -66,6 +66,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "Egzersiz Kütüphanesi", href: "/admin/egzersizler", icon: <Dumbbell size={17} /> },
       { label: "Program Yönetimi", href: "/admin/programlar", icon: <ClipboardList size={17} /> },
+      { label: "Program Talepleri", href: "/admin/program-talepleri", icon: <CreditCard size={17} /> },
     ],
   },
   {
