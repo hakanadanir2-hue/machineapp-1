@@ -16,6 +16,8 @@ const CSP = [
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
+  // Service Worker push notification için worker-src
+  "worker-src 'self'",
   "upgrade-insecure-requests",
 ].join("; ");
 

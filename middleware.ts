@@ -7,8 +7,9 @@ export async function middleware(request: NextRequest) {
   const isAdminRoute     = pathname.startsWith("/admin");
   const isAdminLogin     = pathname === "/admin";
   const isDashboardRoute = pathname.startsWith("/dashboard");
+  const isUyeRoute       = pathname.startsWith("/uye");
 
-  if (!isAdminRoute && !isDashboardRoute) return NextResponse.next();
+  if (!isAdminRoute && !isDashboardRoute && !isUyeRoute) return NextResponse.next();
 
   const response = NextResponse.next({ request });
 
@@ -30,23 +31,41 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
+  // --- Giriş yapılmamış ---
   if (!user) {
     if (isAdminLogin) return response;
-    if (isDashboardRoute) return NextResponse.redirect(new URL("/giris", request.url));
+    if (isDashboardRoute || isUyeRoute) {
+      return NextResponse.redirect(new URL("/giris", request.url));
+    }
     return NextResponse.redirect(new URL("/admin", request.url));
   }
 
+  // --- Giriş yapılmış: rol kontrolü ---
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  const role = profile?.role ?? "member";
+
+  // /dashboard → eski üye panel (geriye uyumluluk): role'e bakılmaksızın geçir
   if (isDashboardRoute) return response;
 
-  if (!isAdminLogin) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+  // /uye/* → sadece member ve trainer erişebilir
+  if (isUyeRoute) {
+    if (role === "admin") {
+      // Admin /uye'ye gelirse admin paneline yönlendir
+      return NextResponse.redirect(new URL("/admin/(panel)/dashboard", request.url));
+    }
+    return response;
+  }
 
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.redirect(new URL("/", request.url));
+  // /admin/* → sadece admin erişebilir
+  if (!isAdminLogin) {
+    if (role !== "admin") {
+      // Üyeyi kendi paneline yönlendir
+      return NextResponse.redirect(new URL("/uye", request.url));
     }
   }
 
@@ -54,5 +73,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*", "/dashboard", "/dashboard/:path*"],
+  matcher: [
+    "/admin",
+    "/admin/:path*",
+    "/dashboard",
+    "/dashboard/:path*",
+    "/uye",
+    "/uye/:path*",
+  ],
 };

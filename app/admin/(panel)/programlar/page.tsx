@@ -12,7 +12,8 @@ interface Program {
   requester_name: string | null; requester_email: string | null;
   profile?: { full_name:string|null; age:number|null; gender:string|null; height_cm:number|null; weight_kg:number|null; bmi:number|null; bmi_category:string|null; injuries:string|null; available_equipment:string|null; } | null;
 }
-interface ProgramDetail { program: Program; profile: Record<string,unknown>|null; weeks: WeekDetail[]; nutrition: NutritionPlan|null; }
+type ProgramProfile = { full_name:string|null; age:number|null; gender:string|null; height_cm:number|null; weight_kg:number|null; bmi:number|null; bmi_category:string|null; injuries:string|null; available_equipment:string|null; };
+interface ProgramDetail { program: Program; profile: ProgramProfile|null; weeks: WeekDetail[]; nutrition: NutritionPlan|null; }
 interface WeekDetail { id:string; week_number:number; notes:string|null; days:DayDetail[]; }
 interface DayDetail { id:string; day_number:number; day_name:string|null; focus:string|null; is_rest_day:boolean; warmup_notes:string|null; cooldown_notes:string|null; total_duration_min:number|null; notes:string|null; exercises:ExerciseRow[]; }
 interface ExerciseRow { id:string; exercise_name:string; sets:number|null; reps:string|null; rest_seconds:number|null; modification:string|null; notes:string|null; order_index:number; }

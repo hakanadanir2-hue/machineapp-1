@@ -4,9 +4,14 @@
   --color-bordo: #6A0D25;
   --color-bordo-dark: #4A0819;
   --color-bordo-light: #8B1030;
+  /* Ana site gold */
   --color-gold: #D4AF37;
   --color-gold-dark: #B8962E;
   --color-gold-light: #E8C84A;
+  /* Üye panel gold (0xFFC9A84C → #C9A84C) */
+  --color-member-gold: #C9A84C;
+  --color-member-gold-dark: #A88A38;
+  --color-member-gold-light: #DFC06A;
   --color-dark: #0B0B0B;
   --color-dark-800: #1A1A1A;
   --color-dark-700: #2A2A2A;
@@ -15,6 +20,9 @@
   --color-foreground: var(--foreground);
   --font-heading: var(--font-montserrat);
   --font-sans: var(--font-inter);
+  /* Üye panel fontları (Google Fonts üzerinden yüklenmesi gerekir) */
+  --font-display: var(--font-bebas-neue, 'Bebas Neue', var(--font-montserrat), Arial, sans-serif);
+  --font-body: var(--font-dm-sans, 'DM Sans', var(--font-inter), Arial, sans-serif);
 }
 
 :root {

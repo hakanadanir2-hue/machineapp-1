@@ -26,6 +26,10 @@ import {
   Calendar,
   Download,
   CreditCard,
+  UserSquare2,
+  GraduationCap,
+  Bell,
+  TrendingUp,
 } from "lucide-react";
 
 interface NavItem {
@@ -67,6 +71,20 @@ const navGroups: NavGroup[] = [
       { label: "Egzersiz Kütüphanesi", href: "/admin/egzersizler", icon: <Dumbbell size={17} /> },
       { label: "Program Yönetimi", href: "/admin/programlar", icon: <ClipboardList size={17} /> },
       { label: "Program Talepleri", href: "/admin/program-talepleri", icon: <CreditCard size={17} /> },
+    ],
+  },
+  {
+    group: "ÜYE YÖNETİMİ",
+    items: [
+      { label: "Üyeler", href: "/admin/uyeler", icon: <UserSquare2 size={17} /> },
+      { label: "Grup Dersleri", href: "/admin/dersler", icon: <GraduationCap size={17} /> },
+      { label: "Bildirimler", href: "/admin/bildirimler", icon: <Bell size={17} /> },
+    ],
+  },
+  {
+    group: "MALİ",
+    items: [
+      { label: "Mali Dashboard", href: "/admin/mali", icon: <TrendingUp size={17} /> },
     ],
   },
   {

@@ -39,6 +39,22 @@ function GirisForm() {
     if (error) {
       setError("E-posta veya şifre hatalı.");
     } else {
+      // Eğer kullanıcı direkt /giris'e geldiyse role'e göre yönlendir
+      if (redirectTo === "/dashboard") {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", user.id)
+            .single();
+          const dest = profile?.role === "admin" ? "/admin/(panel)/dashboard" : "/uye";
+          router.push(dest);
+          router.refresh();
+          setLoading(false);
+          return;
+        }
+      }
       router.push(redirectTo);
       router.refresh();
     }
