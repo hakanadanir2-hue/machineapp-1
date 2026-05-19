@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { generateOrderId } from "@/lib/utils";
+import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,49 +19,82 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Ödeme sistemi yapılandırılmamış." }, { status: 500 });
     }
 
-    const { generatePayTRToken } = await import("@/lib/paytr/hash");
     const merchantOid = generateOrderId();
-    const userIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const userIp      = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "1.2.3.4";
+    const baseUrl     = process.env.NEXT_PUBLIC_SITE_URL || "https://www.machinegym.biz";
+    const testMode    = process.env.PAYTR_TEST_MODE === "1" ? "1" : "0";
+    const paymentAmount = Math.round(amount * 100); // kuruş cinsinden
 
-    // Supabase'e lead kaydı oluştur (auth gerekmez)
-    try {
-      const sc = await createClient();
-      await sc.from("membership_orders").insert({
-        order_id:  merchantOid,
-        plan_adi,
-        kategori:  kategori || "fitness",
-        amount,
-        full_name,
-        email,
-        phone,
-        status:    "pending",
-      });
-    } catch { /* tablo yoksa sessizce geç */ }
+    const userBasket = Buffer.from(
+      JSON.stringify([[`Machine Gym — ${plan_adi}`, String(paymentAmount), "1"]])
+    ).toString("base64");
 
-    const iframeToken = generatePayTRToken({
-      merchantId,
-      merchantKey,
-      merchantSalt,
-      merchantOid,
+    const noInstallment = "0";
+    const maxInstallment = "0";
+    const currency = "TL";
+
+    // PayTR hash hesapla
+    const hashStr = merchantId + userIp + merchantOid + email +
+      String(paymentAmount) + userBasket + noInstallment + maxInstallment + currency + testMode;
+
+    const paytrToken = crypto
+      .createHmac("sha256", merchantKey)
+      .update(hashStr + merchantSalt)
+      .digest("base64");
+
+    // PayTR API'den gerçek iframe token al
+    const params = new URLSearchParams({
+      merchant_id:      merchantId,
+      user_ip:          userIp,
+      merchant_oid:     merchantOid,
       email,
-      paymentAmount: amount,
-      userIp,
-      userName:      full_name,
-      userAddress:   "Türkiye",
-      userPhone:     phone,
-      merchantOkUrl:   `${baseUrl}/odeme/basarili?order=${merchantOid}&plan=${encodeURIComponent(plan_adi)}`,
-      merchantFailUrl: `${baseUrl}/odeme/hata?order=${merchantOid}`,
-      testMode: process.env.PAYTR_TEST_MODE === "1" ? "1" : "0",
-      currency: "TL",
-      basketItems: [
-        { name: `Machine Gym — ${plan_adi}`, price: amount, count: 1, category: kategori || "fitness" },
-      ],
+      payment_amount:   String(paymentAmount),
+      paytr_token:      paytrToken,
+      user_basket:      userBasket,
+      debug_on:         "1",
+      no_installment:   noInstallment,
+      max_installment:  maxInstallment,
+      user_name:        full_name,
+      user_address:     "Türkiye",
+      user_phone:       phone,
+      merchant_ok_url:  `${baseUrl}/odeme/basarili?order=${merchantOid}&plan=${encodeURIComponent(plan_adi)}`,
+      merchant_fail_url:`${baseUrl}/odeme/hata?order=${merchantOid}`,
+      test_mode:        testMode,
+      currency,
+      lang:             "tr",
     });
 
-    return NextResponse.json({ iframeToken, merchantOid, success: true });
+    const paytrRes = await fetch("https://www.paytr.com/odeme/api/get-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+    });
+
+    const paytrData = await paytrRes.json() as { status: string; token?: string; reason?: string };
+
+    if (paytrData.status !== "success" || !paytrData.token) {
+      console.error("PayTR hata:", paytrData);
+      return NextResponse.json(
+        { error: `Ödeme başlatılamadı: ${paytrData.reason || "Bilinmeyen hata"}` },
+        { status: 500 }
+      );
+    }
+
+    // Supabase'e sipariş kaydı (tablo yoksa sessizce geç)
+    try {
+      const { createClient } = await import("@/lib/supabase/server");
+      const sc = await createClient();
+      await sc.from("membership_orders").insert({
+        order_id: merchantOid, plan_adi,
+        kategori: kategori || "fitness",
+        amount, full_name, email, phone, status: "pending",
+      });
+    } catch { /* tablo yoksa geç */ }
+
+    return NextResponse.json({ iframeToken: paytrData.token, merchantOid, success: true });
+
   } catch (error) {
     console.error("Uyelik create error:", error);
-    return NextResponse.json({ error: "Ödeme başlatılamadı." }, { status: 500 });
+    return NextResponse.json({ error: "Sunucu hatası. Lütfen tekrar deneyin." }, { status: 500 });
   }
 }
