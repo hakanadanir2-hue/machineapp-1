@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateOrderId } from "@/lib/utils";
-import crypto from "crypto";
+import { createHmac } from "crypto";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,8 +53,7 @@ export async function POST(request: NextRequest) {
     const hashStr = merchantId + userIp + merchantOid + email +
       paymentAmount + userBasket + noInstallment + maxInstallment + currency + testMode;
 
-    const paytrToken = crypto
-      .createHmac("sha256", merchantKey)
+    const paytrToken = createHmac("sha256", merchantKey)
       .update(hashStr + merchantSalt)
       .digest("base64");
 
