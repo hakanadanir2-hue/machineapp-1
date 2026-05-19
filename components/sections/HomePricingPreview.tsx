@@ -4,9 +4,9 @@ import Link from "next/link";
 import { Check, ArrowRight, Star } from "lucide-react";
 
 const plans = [
-  { name: "Aylık", price: "2.000", period: "/ ay", features: ["Sınırsız Fitness", "Soyunma Odası"], highlight: false },
-  { name: "3 Aylık", price: "4.200", period: "/ 3 ay", features: ["Sınırsız Fitness", "Soyunma Odası", "1 Ücretsiz PT"], highlight: true, badge: "En Popüler" },
-  { name: "6 Aylık", price: "7.000", period: "/ 6 ay", features: ["Sınırsız Fitness", "Soyunma Odası", "2 Ücretsiz PT", "Program Analizi"], highlight: false },
+  { name: "Aylık", price: "2.000", rawPrice: "2000", period: "/ ay", features: ["Sınırsız Fitness", "Soyunma Odası"], highlight: false },
+  { name: "3 Aylık", price: "4.200", rawPrice: "4200", period: "/ 3 ay", features: ["Sınırsız Fitness", "Soyunma Odası", "1 Ücretsiz PT"], highlight: true, badge: "En Popüler" },
+  { name: "6 Aylık", price: "7.000", rawPrice: "7000", period: "/ 6 ay", features: ["Sınırsız Fitness", "Soyunma Odası", "2 Ücretsiz PT", "Program Analizi"], highlight: false },
 ];
 
 export default function HomePricingPreview() {
@@ -63,7 +63,7 @@ export default function HomePricingPreview() {
                 ))}
               </ul>
               <Link
-                href="/fiyatlar"
+                href={`/uyelik-satin-al?plan=${encodeURIComponent(plan.name + " Fitness")}&fiyat=${plan.rawPrice}&kategori=fitness`}
                 style={{ display: "block", textAlign: "center", padding: "0.75rem", borderRadius: "12px", fontSize: "0.875rem", fontWeight: 700, textDecoration: "none", background: plan.highlight ? "#D4AF37" : "#2A2A2A", color: plan.highlight ? "#0B0B0B" : "#fff", border: plan.highlight ? "none" : "1px solid #3A3A3A" }}
               >
                 Üye Ol

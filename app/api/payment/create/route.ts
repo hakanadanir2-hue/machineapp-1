@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       userPhone: "",
       merchantOkUrl: `${baseUrl}/odeme/basarili?order=${merchantOid}`,
       merchantFailUrl: `${baseUrl}/odeme/hata?order=${merchantOid}`,
-      testMode: "1",
+      testMode: process.env.NODE_ENV === "development" ? "1" : "0",
       currency: "TL",
       basketItems: [
         { name: type === "program" ? "Machine Gym Kişisel Program" : "Machine Gym Üyelik", price: amount, count: 1, category: "fitness" },

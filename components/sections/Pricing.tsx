@@ -172,7 +172,7 @@ export default function Pricing({ plans, whatsapp = "903742701455" }: PricingPro
               </ul>
 
               <Link
-                href="/randevu"
+                href={`/uyelik-satin-al?plan=${encodeURIComponent(plan.name + " Fitness")}&fiyat=${plan.price.replace(/\./g, "")}&kategori=fitness`}
                 style={{
                   display: "block",
                   textAlign: "center",
@@ -236,10 +236,10 @@ export default function Pricing({ plans, whatsapp = "903742701455" }: PricingPro
               </div>
               <p style={{ color: p.popular ? "#D4AF37" : "rgba(255,255,255,0.4)", fontSize: "0.8125rem", marginBottom: "1.5rem", flex: 1 }}>{p.per}</p>
               <Link
-                href="/randevu"
+                href={`/uyelik-satin-al?plan=${encodeURIComponent("PT " + p.name)}&fiyat=${p.price.replace(/\./g, "")}&kategori=pt`}
                 style={{ display: "block", textAlign: "center", padding: "0.75rem", borderRadius: "12px", fontSize: "0.875rem", fontWeight: 700, textDecoration: "none", background: p.popular ? "#D4AF37" : "#2A2A2A", color: p.popular ? "#0B0B0B" : "#fff", border: p.popular ? "none" : "1px solid #3A3A3A", marginBottom: "0.5rem" }}
               >
-                Rezerve Et
+                Satın Al
               </Link>
               <a
                 href={waReceipt(`PT ${p.name}`, p.price)}
@@ -288,10 +288,10 @@ export default function Pricing({ plans, whatsapp = "903742701455" }: PricingPro
               </div>
               <p style={{ color: p.popular ? "#D4AF37" : "rgba(255,255,255,0.4)", fontSize: "0.8125rem", marginBottom: "1.5rem", flex: 1 }}>{p.per}</p>
               <Link
-                href="/randevu"
+                href={`/uyelik-satin-al?plan=${encodeURIComponent("Boks " + p.name)}&fiyat=${p.price.replace(/\./g, "")}&kategori=boks`}
                 style={{ display: "block", textAlign: "center", padding: "0.75rem", borderRadius: "12px", fontSize: "0.875rem", fontWeight: 700, textDecoration: "none", background: p.popular ? "#D4AF37" : "#2A2A2A", color: p.popular ? "#0B0B0B" : "#fff", border: p.popular ? "none" : "1px solid #3A3A3A", marginBottom: "0.5rem" }}
               >
-                Rezerve Et
+                Satın Al
               </Link>
               <a
                 href={waReceipt(`Boks ${p.name}`, p.price)}
@@ -319,7 +319,7 @@ export default function Pricing({ plans, whatsapp = "903742701455" }: PricingPro
             <div style={{ marginBottom: "1.5rem" }}>
               <span style={{ fontSize: "2rem", fontWeight: 800, color: "#D4AF37", fontFamily: "var(--font-heading)" }}>₺5.200</span>
             </div>
-            <Link href="/randevu" style={{ display: "inline-block", padding: "0.75rem 1.5rem", background: "#6A0D25", color: "#fff", fontSize: "0.875rem", fontWeight: 700, borderRadius: "12px", border: "1px solid rgba(212,175,55,0.3)", textDecoration: "none" }}>
+            <Link href="/uyelik-satin-al?plan=4+Al+5+%C3%96de+Kampanyas%C4%B1&fiyat=5200&kategori=fitness" style={{ display: "inline-block", padding: "0.75rem 1.5rem", background: "#6A0D25", color: "#fff", fontSize: "0.875rem", fontWeight: 700, borderRadius: "12px", border: "1px solid rgba(212,175,55,0.3)", textDecoration: "none" }}>
               Hemen Yararlan
             </Link>
           </div>
