@@ -306,36 +306,77 @@ export default function Pricing({ plans, whatsapp = "903742701455" }: PricingPro
         </div>
       </section>
 
-      {/* Campaigns */}
-      <section style={{ marginBottom: "3.5rem" }}>
-        <SectionTitle label="Özel Teklifler" title="Kampanyalar" />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem" }}>
-          <div style={{ background: "#1A1A1A", border: "1px solid rgba(212,175,55,0.25)", borderRadius: "18px", padding: "1.75rem" }}>
-            <p style={{ color: "#D4AF37", fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "0.625rem" }}>Kampanya</p>
-            <h3 style={{ color: "#fff", fontWeight: 800, fontSize: "1.25rem", fontFamily: "var(--font-heading)", marginBottom: "0.5rem" }}>4 Al 5 Öde</h3>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.875rem", lineHeight: 1.65, marginBottom: "0.75rem" }}>
-              4 aylık üyelik al, 5. ay <strong style={{ color: "#fff" }}>hediyemizden</strong> yararlansın — sadece <strong style={{ color: "#D4AF37", fontSize: "1.1em" }}>₺5.200</strong>!
-            </p>
-            <div style={{ marginBottom: "1.5rem" }}>
-              <span style={{ fontSize: "2rem", fontWeight: 800, color: "#D4AF37", fontFamily: "var(--font-heading)" }}>₺5.200</span>
-            </div>
-            <Link href="/uyelik-satin-al?plan=4+Al+5+%C3%96de+Kampanyas%C4%B1&fiyat=5200&kategori=fitness" style={{ display: "inline-block", padding: "0.75rem 1.5rem", background: "#6A0D25", color: "#fff", fontSize: "0.875rem", fontWeight: 700, borderRadius: "12px", border: "1px solid rgba(212,175,55,0.3)", textDecoration: "none" }}>
-              Hemen Yararlan
-            </Link>
+      {/* Campaigns — sadece admin panelinden girilenleri göster */}
+      {useCampaigns.length > 0 && (
+        <section style={{ marginBottom: "3.5rem" }}>
+          <SectionTitle label="Özel Teklifler" title="Kampanyalar" />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem" }}>
+            {useCampaigns.map((p, i) => (
+              <motion.div
+                key={p.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.07 }}
+                style={{
+                  position: "relative",
+                  display: "flex",
+                  flexDirection: "column",
+                  background: p.is_popular ? "#6A0D25" : "#1A1A1A",
+                  border: p.is_popular ? "1px solid rgba(212,175,55,0.4)" : "1px solid rgba(212,175,55,0.2)",
+                  borderRadius: "18px",
+                  padding: "1.75rem",
+                  marginTop: p.is_popular ? "12px" : "0",
+                }}
+              >
+                {p.is_popular && (
+                  <div style={{ position: "absolute", top: "-14px", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.25rem 0.875rem", background: "#D4AF37", color: "#0B0B0B", fontSize: "0.6875rem", fontWeight: 700, borderRadius: "9999px" }}>
+                      <Star style={{ width: "10px", height: "10px" }} /> Öne Çıkan
+                    </span>
+                  </div>
+                )}
+                <p style={{ color: "#D4AF37", fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Kampanya</p>
+                <h3 style={{ color: "#fff", fontWeight: 800, fontSize: "1.25rem", fontFamily: "var(--font-heading)", marginBottom: "0.5rem" }}>{p.name}</h3>
+                {p.description && (
+                  <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.875rem", lineHeight: 1.65, marginBottom: "0.75rem", flex: 1 }}>{p.description}</p>
+                )}
+                <div style={{ marginBottom: "1.25rem" }}>
+                  {p.discounted_price ? (
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem" }}>
+                      <span style={{ fontSize: "2rem", fontWeight: 800, color: "#D4AF37", fontFamily: "var(--font-heading)" }}>
+                        ₺{p.discounted_price.toLocaleString("tr-TR")}
+                      </span>
+                      <span style={{ fontSize: "1rem", color: "rgba(255,255,255,0.3)", textDecoration: "line-through" }}>
+                        ₺{p.price.toLocaleString("tr-TR")}
+                      </span>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: "2rem", fontWeight: 800, color: "#D4AF37", fontFamily: "var(--font-heading)" }}>
+                      ₺{p.price.toLocaleString("tr-TR")}
+                    </span>
+                  )}
+                </div>
+                {(p.features ?? []).length > 0 && (
+                  <ul style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.25rem" }}>
+                    {(p.features ?? []).map(f => (
+                      <li key={f} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <Check style={{ width: "14px", height: "14px", color: "#D4AF37", flexShrink: 0 }} />
+                        <span style={{ fontSize: "0.875rem", color: "rgba(255,255,255,0.6)" }}>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <Link
+                  href={`/uyelik-satin-al?plan=${encodeURIComponent(p.name)}&fiyat=${p.discounted_price ?? p.price}&kategori=kampanya`}
+                  style={{ display: "block", textAlign: "center", padding: "0.75rem", borderRadius: "12px", fontSize: "0.875rem", fontWeight: 700, textDecoration: "none", background: p.is_popular ? "#D4AF37" : "#6A0D25", color: p.is_popular ? "#0B0B0B" : "#fff", border: p.is_popular ? "none" : "1px solid rgba(212,175,55,0.3)" }}
+                >
+                  Hemen Yararlan
+                </Link>
+              </motion.div>
+            ))}
           </div>
-
-          <div style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: "18px", padding: "1.75rem" }}>
-            <p style={{ color: "#D4AF37", fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "0.625rem" }}>Arkadaşını Getir</p>
-            <h3 style={{ color: "#fff", fontWeight: 800, fontSize: "1.25rem", fontFamily: "var(--font-heading)", marginBottom: "0.5rem" }}>+15 Gün Hediye</h3>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.875rem", lineHeight: 1.65, marginBottom: "1.5rem" }}>
-              Her getirdiğin arkadaş için üyeliğine otomatik <strong style={{ color: "#fff" }}>15 gün ücretsiz</strong> eklenir.
-            </p>
-            <Link href="/iletisim" style={{ display: "inline-block", padding: "0.75rem 1.5rem", background: "#2A2A2A", color: "#fff", fontSize: "0.875rem", fontWeight: 600, borderRadius: "12px", border: "1px solid #3A3A3A", textDecoration: "none" }}>
-              Detaylı Bilgi Al
-            </Link>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* WhatsApp CTA */}
       <div style={{ background: "rgba(106,13,37,0.08)", border: "1px solid rgba(106,13,37,0.2)", borderRadius: "18px", padding: "2rem", display: "flex", flexDirection: "column", gap: "1rem", alignItems: "center", textAlign: "center" }}>
