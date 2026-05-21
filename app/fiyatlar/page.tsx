@@ -4,11 +4,24 @@ import WhatsAppButton from "@/components/WhatsAppButton";
 import Pricing from "@/components/sections/Pricing";
 import { createClient } from "@/lib/supabase/server";
 import { getSettings, s } from "@/lib/settings";
-import { buildMetadata } from "@/lib/seo";
+import { buildMetadata, breadcrumbSchema, faqSchema, BASE_URL } from "@/lib/seo";
 
 export async function generateMetadata() {
-  return buildMetadata({ settingsKey: "seo_fiyatlar", defaultTitle: "Fiyatlar — Machine Gym | Bolu", defaultDesc: "Machine Gym fiyat listesi: Fitness üyelik, personal trainer, boks ve kickboks paketleri.", path: "/fiyatlar" });
+  return buildMetadata({
+    settingsKey: "seo_fiyatlar",
+    defaultTitle: "Fiyatlar — Machine Gym | Bolu Spor Salonu Üyelik Fiyatları",
+    defaultDesc: "Machine Gym Bolu fiyat listesi: aylık fitness üyelik, personal trainer, boks ve kickboks paketleri. Gizli ücret yok. İlk antrenman ücretsiz.",
+    path: "/fiyatlar",
+    keywords: ["bolu spor salonu fiyat", "bolu fitness üyelik ücreti", "machine gym fiyat", "personal trainer bolu fiyat", "boks dersi bolu fiyat"],
+  });
 }
+
+const FIYATLAR_FAQ = [
+  { question: "Bolu'da spor salonu üyeliği ne kadar?", answer: "Machine Gym'de aylık, 3 aylık ve yıllık üyelik paketleri mevcuttur. Güncel fiyatlar için fiyatlar sayfamızı ziyaret edin ya da sizi arayalım." },
+  { question: "Kontratsız üyelik var mı?", answer: "Evet, aylık üyelik seçeneğimizde herhangi bir taahhüt veya sözleşme bulunmamaktadır." },
+  { question: "Personal trainer fiyatı ne kadar?", answer: "Bire bir PT seansları hedef ve paket süresine göre değişmektedir. Ayrıntılı bilgi için WhatsApp hattımızı arayabilirsiniz." },
+  { question: "Üyelik iptal edebilir miyim?", answer: "Aylık üyeliklerde dilediğiniz zaman iptal hakkınız mevcuttur. Uzun dönemli paketlerde koşullarımızı salonumuzdan öğrenebilirsiniz." },
+];
 
 export default async function FiyatlarPage() {
   const [settings, supabase] = await Promise.all([getSettings(), createClient()]);
@@ -20,8 +33,16 @@ export default async function FiyatlarPage() {
 
   const whatsapp = s(settings, "contact_whatsapp", "903742701455");
 
+  const faqJsonLd = faqSchema(FIYATLAR_FAQ);
+  const breadcrumbJsonLd = breadcrumbSchema([
+    { name: "Ana Sayfa", url: BASE_URL },
+    { name: "Fiyatlar", url: `${BASE_URL}/fiyatlar` },
+  ]);
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <Navbar />
       <main style={{ minHeight: "100vh", background: "#0B0B0B" }}>
         <div style={{ paddingTop: "96px", paddingBottom: "3.5rem", background: "linear-gradient(to bottom, #111111, #0B0B0B)", borderBottom: "1px solid rgba(106,13,37,0.15)" }}>

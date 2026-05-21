@@ -4,11 +4,17 @@ import { createClient } from "@/lib/supabase/server";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
-import { buildMetadata } from "@/lib/seo";
+import { buildMetadata, breadcrumbSchema, BASE_URL } from "@/lib/seo";
 import BlogClient from "./BlogClient";
 
 export async function generateMetadata() {
-  return buildMetadata({ settingsKey: "seo_blog", defaultTitle: "Blog — Machine Gym | Fitness & Boks Yazıları", defaultDesc: "Fitness, boks, beslenme ve sağlıklı yaşam üzerine uzman içerikler. Machine Gym Bolu.", path: "/blog" });
+  return buildMetadata({
+    settingsKey: "seo_blog",
+    defaultTitle: "Blog — Machine Gym | Fitness, Boks ve Sağlıklı Yaşam Yazıları",
+    defaultDesc: "Fitness, boks, beslenme ve sağlıklı yaşam üzerine uzman içerikler. Machine Gym Bolu eğitmenlerinden bilimsel tabanlı yazılar.",
+    path: "/blog",
+    keywords: ["fitness blog türkçe", "boks antrenman ipuçları", "beslenme programı", "kilo verme", "kas kazanımı", "machine gym blog"],
+  });
 }
 
 const PLACEHOLDER_POSTS = [
@@ -45,8 +51,14 @@ export default async function BlogPage() {
     : [];
   const isPlaceholder = !postsFromDb || postsFromDb.length === 0;
 
+  const breadcrumbJsonLd = breadcrumbSchema([
+    { name: "Ana Sayfa", url: BASE_URL },
+    { name: "Blog", url: `${BASE_URL}/blog` },
+  ]);
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <Navbar />
       <main style={{ minHeight: "100vh", background: "#0B0B0B" }}>
         <div style={{ paddingTop: "96px", paddingBottom: "3.5rem", background: "linear-gradient(to bottom, #111111, #0B0B0B)", borderBottom: "1px solid rgba(106,13,37,0.15)" }}>

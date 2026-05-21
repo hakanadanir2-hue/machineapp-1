@@ -5,10 +5,16 @@ import { getSettings, s } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Award, Target, Heart, ArrowRight, Users, Clock, Dumbbell, Star } from "lucide-react";
-import { buildMetadata } from "@/lib/seo";
+import { buildMetadata, breadcrumbSchema, BASE_URL } from "@/lib/seo";
 
 export async function generateMetadata() {
-  return buildMetadata({ settingsKey: "seo_hakkimizda", defaultTitle: "Hakkımızda — Machine Gym | Bolu Premium Spor Salonu", defaultDesc: "Machine Gym hakkında: Bolu'nun premium fitness & boks salonu. Misyonumuz, vizyonumuz ve değerlerimiz.", path: "/hakkimizda" });
+  return buildMetadata({
+    settingsKey: "seo_hakkimizda",
+    defaultTitle: "Hakkımızda — Machine Gym | Bolu'nun Premium Fitness & Dövüş Sporları Merkezi",
+    defaultDesc: "Machine Gym, Bolu merkezde 600 m² modern tesis, uzman eğitmen kadrosu ve 5 branşla fitness ve dövüş sporlarında 10 yılı aşkın deneyim sunan premium spor merkezidir.",
+    path: "/hakkimizda",
+    keywords: ["machine gym hakkında", "bolu spor salonu tarihçe", "bolu fitness merkezi", "bolu dövüş sporları", "machine gym bolu eğitmenler"],
+  });
 }
 
 const values = [
@@ -32,8 +38,14 @@ export default async function HakkimizdaPage() {
     { value: s(settings, "about_trainers", "3"), label: "Uzman Eğitmen", Icon: Star },
   ];
 
+  const breadcrumbJsonLd = breadcrumbSchema([
+    { name: "Ana Sayfa", url: BASE_URL },
+    { name: "Hakkımızda", url: `${BASE_URL}/hakkimizda` },
+  ]);
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <Navbar />
       <main style={{ minHeight: "100vh", background: "#0B0B0B" }}>
         <div style={{ paddingTop: "96px", paddingBottom: "3.5rem", background: "linear-gradient(to bottom, #111111, #0B0B0B)", borderBottom: "1px solid rgba(106,13,37,0.15)" }}>

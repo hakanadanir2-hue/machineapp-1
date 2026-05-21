@@ -16,6 +16,17 @@ export default function HomeFAQ() {
   const [open, setOpen] = useState<number | null>(null);
   return (
     <section style={{ padding: "5rem 0", background: "#0B0B0B" }}>
+      {/* SSR-visible FAQ content for search engines and AI crawlers */}
+      <noscript>
+        <div>
+          {faqs.map((faq, i) => (
+            <div key={i}>
+              <h3>{faq.q}</h3>
+              <p>{faq.a}</p>
+            </div>
+          ))}
+        </div>
+      </noscript>
       <div className="page-container">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} style={{ textAlign: "center", marginBottom: "3rem" }}>
           <p style={{ color: "#D4AF37", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "0.75rem" }}>Sık Sorulan</p>

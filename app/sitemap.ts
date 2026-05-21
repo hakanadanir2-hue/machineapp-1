@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { MetadataRoute } from "next";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://machinegym.com.tr";
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://machinegym.biz";
   const supabase = await createClient();
 
   const { data: posts } = await supabase
@@ -13,13 +13,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .eq("published", true);
 
   const staticPages: MetadataRoute.Sitemap = [
-    { url: baseUrl, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
-    { url: `${baseUrl}/hizmetler`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${baseUrl}/fiyatlar`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${baseUrl}/program-al`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },
-    { url: `${baseUrl}/randevu`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
-    { url: `${baseUrl}/iletisim`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.5 },
+    { url: baseUrl,                        lastModified: new Date(), changeFrequency: "weekly",  priority: 1.0 },
+    { url: `${baseUrl}/hizmetler`,         lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },
+    { url: `${baseUrl}/fiyatlar`,          lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },
+    { url: `${baseUrl}/program-al`,        lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
+    { url: `${baseUrl}/randevu`,           lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
+    { url: `${baseUrl}/hakkimizda`,        lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
+    { url: `${baseUrl}/sss`,               lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
+    { url: `${baseUrl}/blog`,              lastModified: new Date(), changeFrequency: "weekly",  priority: 0.7 },
+    { url: `${baseUrl}/iletisim`,          lastModified: new Date(), changeFrequency: "yearly",  priority: 0.6 },
+    { url: `${baseUrl}/bki`,               lastModified: new Date(), changeFrequency: "yearly",  priority: 0.5 },
+    { url: `${baseUrl}/deneme-antrenman`,  lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
+    { url: `${baseUrl}/gizlilik`,          lastModified: new Date(), changeFrequency: "yearly",  priority: 0.3 },
+    { url: `${baseUrl}/kvkk`,              lastModified: new Date(), changeFrequency: "yearly",  priority: 0.3 },
+    { url: `${baseUrl}/kosullar`,          lastModified: new Date(), changeFrequency: "yearly",  priority: 0.3 },
   ];
 
   const blogPages: MetadataRoute.Sitemap = posts?.map(post => ({

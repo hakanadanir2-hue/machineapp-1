@@ -3,10 +3,16 @@ import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import ContactClient from "./ContactClient";
 import { getSettings, s } from "@/lib/settings";
-import { buildMetadata } from "@/lib/seo";
+import { buildMetadata, breadcrumbSchema, BASE_URL } from "@/lib/seo";
 
 export async function generateMetadata() {
-  return buildMetadata({ settingsKey: "seo_iletisim", defaultTitle: "İletişim — Machine Gym | Bolu", defaultDesc: "Machine Gym iletişim bilgileri. Bolu Tabaklar Mah. Uygur Sokak NO:3. Tel: 0374 270 14 55", path: "/iletisim" });
+  return buildMetadata({
+    settingsKey: "seo_iletisim",
+    defaultTitle: "İletişim — Machine Gym | Bolu Spor Salonu Adres ve Telefon",
+    defaultDesc: "Machine Gym Bolu iletişim bilgileri. Tabaklar Mah. Uygur Sokak No:3, Bolu Merkez. Tel: 0374 270 14 55. Ücretsiz deneme için randevu alın.",
+    path: "/iletisim",
+    keywords: ["machine gym iletişim", "bolu spor salonu adres", "bolu fitness telefon", "machine gym telefon", "machine gym bolu konum"],
+  });
 }
 
 export default async function IletisimPage() {
@@ -24,8 +30,14 @@ export default async function IletisimPage() {
     facebook: s(settings, "social_facebook", "https://facebook.com/machinegym"),
   };
 
+  const breadcrumbJsonLd = breadcrumbSchema([
+    { name: "Ana Sayfa", url: BASE_URL },
+    { name: "İletişim", url: `${BASE_URL}/iletisim` },
+  ]);
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <Navbar />
       <main style={{ minHeight: "100vh", background: "#0B0B0B" }}>
         <div style={{ paddingTop: "96px", paddingBottom: "3.5rem", background: "linear-gradient(to bottom, #111111, #0B0B0B)", borderBottom: "1px solid rgba(106,13,37,0.15)" }}>

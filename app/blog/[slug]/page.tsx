@@ -13,21 +13,38 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
+const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://machinegym.biz";
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const supabase = await createClient();
   const { data } = await supabase
     .from("blog_posts")
-    .select("title, seo_title, seo_description, excerpt, cover_image")
+    .select("title, seo_title, seo_description, excerpt, cover_image, published_at")
     .eq("slug", slug)
     .single();
   if (!data) return {};
+  const title = `${data.seo_title || data.title} — Machine Gym Blog`;
+  const description = data.seo_description || data.excerpt || "";
+  const url = `${BASE}/blog/${slug}`;
   return {
-    title: `${data.seo_title || data.title} — Machine Gym Blog`,
-    description: data.seo_description || data.excerpt || "",
+    title,
+    description,
+    alternates: { canonical: url },
     openGraph: {
       title: data.seo_title || data.title,
-      description: data.seo_description || data.excerpt || "",
+      description,
+      url,
+      siteName: "Machine Gym",
+      locale: "tr_TR",
+      type: "article",
+      images: data.cover_image ? [{ url: data.cover_image, width: 1200, height: 630, alt: data.seo_title || data.title }] : [],
+      publishedTime: data.published_at || undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
       images: data.cover_image ? [data.cover_image] : [],
     },
   };
@@ -66,6 +83,7 @@ export default async function BlogPostPage({ params }: Props) {
     );
   }
 
+  const postUrl = `${BASE}/blog/${slug}`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
@@ -73,14 +91,33 @@ export default async function BlogPostPage({ params }: Props) {
     description: post.excerpt,
     image: post.cover_image,
     datePublished: post.published_at,
-    author: { "@type": "Organization", name: "Machine Gym" },
-    publisher: { "@type": "Organization", name: "Machine Gym", url: "https://machinegym.com.tr" },
+    dateModified: post.updated_at || post.published_at,
+    url: postUrl,
+    author: { "@type": "Organization", name: "Machine Gym", url: BASE },
+    publisher: {
+      "@type": "Organization",
+      name: "Machine Gym",
+      url: BASE,
+      logo: { "@type": "ImageObject", url: `${BASE}/logo.png` },
+    },
+    mainEntityOfPage: { "@type": "WebPage", "@id": postUrl },
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Ana Sayfa", item: BASE },
+      { "@type": "ListItem", position: 2, name: "Blog", item: `${BASE}/blog` },
+      { "@type": "ListItem", position: 3, name: post.title, item: postUrl },
+    ],
   };
 
   return (
     <>
       <Navbar />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <main style={{ minHeight: "100vh", background: "#0B0B0B" }}>
 
         {/* Cover */}

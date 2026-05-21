@@ -3,11 +3,17 @@ import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
-import { buildMetadata } from "@/lib/seo";
+import { buildMetadata, breadcrumbSchema, faqSchema, BASE_URL } from "@/lib/seo";
 import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata() {
-  return buildMetadata({ settingsKey: "seo_hizmetler", defaultTitle: "Hizmetler — Machine Gym | Bolu", defaultDesc: "Machine Gym hizmetleri: Fitness üyelik, personal trainer, boks, kickboks ve muay thai.", path: "/hizmetler" });
+  return buildMetadata({
+    settingsKey: "seo_hizmetler",
+    defaultTitle: "Hizmetler — Machine Gym | Bolu Fitness, Boks, Kickboks, Muay Thai",
+    defaultDesc: "Machine Gym Bolu hizmetleri: fitness üyelik, personal trainer, boks özel ders, kickboks ve muay thai. 600 m² modern tesis. İlk ders ücretsiz.",
+    path: "/hizmetler",
+    keywords: ["bolu spor salonu", "bolu fitness", "bolu boks dersi", "bolu personal trainer", "bolu kickboks", "bolu muay thai", "machine gym bolu hizmetler"],
+  });
 }
 
 interface Service {
@@ -28,6 +34,13 @@ const FALLBACK: Service[] = [
   { id: "3", title: "Boks Özel Ders", short_description: "Teknik, kondisyon ve öz güven.", long_description: "Profesyonel boks eğitmenleriyle bire bir veya grup derslerinde teknik kazanın.", features: ["Ayak İşi & Duruş", "Kombinasyon Çalışmaları", "Torba & Pad Antrenmanı", "Kondisyon"], image_url: "https://images.unsplash.com/photo-1549476464-37392f717541?w=900&q=80", cta_text: "Randevu Al", cta_link: "/randevu", order_index: 2 },
 ];
 
+const HIZMETLER_FAQ = [
+  { question: "Bolu'da hangi spor salonu var?", answer: "Bolu merkezdeki Machine Gym, fitness, personal trainer, boks, kickboks ve muay thai branşlarını tek çatı altında sunan 600 m² premium spor merkezidir." },
+  { question: "Machine Gym'de hangi hizmetler sunuluyor?", answer: "Fitness üyeliği, personal training (kişisel antrenör), boks özel dersi, kickboks ve muay thai branşlarında profesyonel eğitim sunulmaktadır." },
+  { question: "Boks dersine başlamak için ne gerekli?", answer: "Herhangi bir ön koşul yoktur. Sıfırdan başlayanlar için özel başlangıç programları mevcuttur. İlk ders ücretsizdir." },
+  { question: "Personal trainer ne kadar süre içinde sonuç verir?", answer: "Hedefe, başlangıç seviyesine ve program uyumuna bağlı olarak genellikle 4-8 hafta içinde görünür sonuçlar elde edilir." },
+];
+
 export default async function HizmetlerPage() {
   const supabase = await createClient();
   const { data } = await supabase
@@ -38,8 +51,16 @@ export default async function HizmetlerPage() {
 
   const services: Service[] = (data && data.length > 0) ? data : FALLBACK;
 
+  const faqJsonLd = faqSchema(HIZMETLER_FAQ);
+  const breadcrumbJsonLd = breadcrumbSchema([
+    { name: "Ana Sayfa", url: BASE_URL },
+    { name: "Hizmetler", url: `${BASE_URL}/hizmetler` },
+  ]);
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <Navbar />
       <main style={{ minHeight: "100vh", background: "#0B0B0B" }}>
 

@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     "boks dersi bolu", "personal trainer bolu", "kickboks muay thai",
   ],
   openGraph: {
-    type: "website", locale: "tr_TR", url: "https://machinegym.com.tr",
+    type: "website", locale: "tr_TR", url: "https://machinegym.biz",
     siteName: "Machine Gym",
     title: "Machine Gym | Bolu'nun Premium Fitness & Boks Salonu",
     description: "Bolu'nun en disiplinli fitness & boks salonu.",

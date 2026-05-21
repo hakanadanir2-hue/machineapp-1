@@ -1,13 +1,14 @@
 import { getSettings, s } from "@/lib/settings";
 import type { Metadata } from "next";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://machinegym.biz";
+export const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://machinegym.biz";
 
 interface SeoPageConfig {
   settingsKey: string;
   defaultTitle: string;
   defaultDesc: string;
   path: string;
+  keywords?: string[];
 }
 
 export async function buildMetadata(config: SeoPageConfig): Promise<Metadata> {
@@ -24,6 +25,7 @@ export async function buildMetadata(config: SeoPageConfig): Promise<Metadata> {
   return {
     title,
     description: desc,
+    keywords: config.keywords,
     robots: noindex ? "noindex,nofollow" : "index,follow",
     alternates: { canonical: `${BASE_URL}${config.path}` },
     openGraph: {
@@ -41,5 +43,35 @@ export async function buildMetadata(config: SeoPageConfig): Promise<Metadata> {
       description: ogDesc,
       images: ogImage ? [ogImage] : undefined,
     },
+  };
+}
+
+/** Breadcrumb JSON-LD schema */
+export function breadcrumbSchema(items: { name: string; url: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: item.name,
+      item: item.url,
+    })),
+  };
+}
+
+/** FAQPage JSON-LD schema */
+export function faqSchema(faqs: { question: string; answer: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
   };
 }
