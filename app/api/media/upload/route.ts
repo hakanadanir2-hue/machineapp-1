@@ -7,102 +7,108 @@ export const maxDuration = 60;
 
 const BUCKET = "gallery";
 const ALLOWED_MIME = [
-  "image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "image/avif",
-  "video/mp4", "video/webm", "video/ogg", "video/quicktime",
+  "image/jpeg","image/png","image/webp","image/gif","image/svg+xml","image/avif",
+  "video/mp4","video/webm","video/ogg","video/quicktime",
 ];
-const MAX_SIZE_IMAGE = 10 * 1024 * 1024;   // 10 MB
-const MAX_SIZE_VIDEO = 200 * 1024 * 1024;  // 200 MB
-const SAFE_FOLDER = /^[a-z0-9_-]{1,40}$/;
+const MAX_SIZE_IMAGE = 10 * 1024 * 1024;
+const MAX_SIZE_VIDEO = 200 * 1024 * 1024;
 
-/** Bucket yoksa oluştur, varsa MIME listesini güncelle */
-async function ensureBucket(admin: ReturnType<typeof createAdminClient>) {
+type AdminClient = ReturnType<typeof createAdminClient>;
+
+async function ensureBucket(admin: AdminClient): Promise<void> {
   const { data: buckets } = await admin.storage.listBuckets();
-  const exists = buckets?.some((b) => b.id === BUCKET);
-
-  const bucketConfig = {
+  const exists = buckets?.some(b => b.id === BUCKET);
+  const config = {
     public: true,
     fileSizeLimit: MAX_SIZE_VIDEO,
     allowedMimeTypes: ALLOWED_MIME,
   };
-
   if (!exists) {
-    const { error } = await admin.storage.createBucket(BUCKET, bucketConfig);
-    if (error) throw new Error(`Bucket oluşturulamadı: ${error.message}`);
+    const { error } = await admin.storage.createBucket(BUCKET, config);
+    // If "already exists" race condition, ignore
+    if (error && !error.message.includes("already")) {
+      throw new Error(`Bucket oluşturulamadı: ${error.message}`);
+    }
   } else {
-    await admin.storage.updateBucket(BUCKET, bucketConfig);
+    // Best-effort update — ignore errors (bucket works regardless)
+    await admin.storage.updateBucket(BUCKET, config).catch(() => null);
   }
 }
 
 export async function POST(req: NextRequest) {
+  // 1. Auth check
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
 
+  // 2. Parse form
   const formData = await req.formData();
   const files = formData.getAll("files") as File[];
-  const rawFolder = (formData.get("folder") as string) || "";
-  const folder = rawFolder ? rawFolder.replace(/[^a-z0-9_-]/gi, "").slice(0, 40) : "";
+  const rawFolder = (formData.get("folder") as string | null) ?? "";
+  const folder = rawFolder.replace(/[^a-z0-9_-]/gi, "").slice(0, 40);
 
-  if (rawFolder && !SAFE_FOLDER.test(rawFolder)) {
-    return NextResponse.json({ error: "Geçersiz klasör adı" }, { status: 400 });
-  }
   if (!files.length) {
-    return NextResponse.json({ error: "No files provided" }, { status: 400 });
+    return NextResponse.json({ error: "Dosya seçilmedi" }, { status: 400 });
   }
 
-  let admin: ReturnType<typeof createAdminClient>;
+  // 3. Admin client
+  let admin: AdminClient;
   try {
     admin = createAdminClient();
-  } catch {
+  } catch (e) {
     return NextResponse.json(
-      { error: "SUPABASE_SERVICE_ROLE_KEY eksik. Vercel Environment Variables'a ekleyin." },
+      { error: `Sunucu yapılandırma hatası: ${e instanceof Error ? e.message : "SUPABASE_SERVICE_ROLE_KEY eksik"}` },
       { status: 503 }
     );
   }
 
-  // Bucket yoksa otomatik oluştur
+  // 4. Ensure bucket exists (create if needed)
   try {
     await ensureBucket(admin);
-  } catch (err) {
+  } catch (e) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Bucket hazırlanamadı" },
+      { error: e instanceof Error ? e.message : "Bucket hazırlanamadı" },
       { status: 500 }
     );
   }
 
-  const results: Array<{ name: string; url: string; error?: string }> = [];
+  // 5. Upload files
+  const results: { name: string; url: string; error?: string }[] = [];
 
   for (const file of files) {
     if (!ALLOWED_MIME.includes(file.type)) {
-      results.push({ name: file.name, url: "", error: `Desteklenmeyen dosya tipi: ${file.type}` });
+      results.push({ name: file.name, url: "", error: `Desteklenmeyen tip: ${file.type}` });
       continue;
     }
     const isVideo = file.type.startsWith("video/");
-    const maxSize = isVideo ? MAX_SIZE_VIDEO : MAX_SIZE_IMAGE;
-    if (file.size > maxSize) {
-      results.push({ name: file.name, url: "", error: isVideo ? "Video 200MB'ı aşıyor" : "Görsel 10MB'ı aşıyor" });
+    if (file.size > (isVideo ? MAX_SIZE_VIDEO : MAX_SIZE_IMAGE)) {
+      results.push({ name: file.name, url: "", error: isVideo ? "Video 200MB sınırını aşıyor" : "Görsel 10MB sınırını aşıyor" });
       continue;
     }
 
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-    const safeName = `${folder ? folder + "/" : ""}${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
+    const path = `${folder ? folder + "/" : ""}${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
 
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const { error } = await admin.storage
+    const { error: upErr } = await admin.storage
       .from(BUCKET)
-      .upload(safeName, buffer, {
-        contentType: file.type,
-        upsert: false,
-        cacheControl: "3600",
-      });
+      .upload(path, buffer, { contentType: file.type, upsert: false, cacheControl: "3600" });
 
-    if (error) {
-      results.push({ name: file.name, url: "", error: error.message });
-    } else {
-      const { data: urlData } = admin.storage.from(BUCKET).getPublicUrl(safeName);
-      results.push({ name: safeName, url: urlData.publicUrl });
+    if (upErr) {
+      // If bucket somehow disappeared, try re-creating once
+      if (upErr.message.includes("Bucket not found") || upErr.message.includes("bucket")) {
+        await ensureBucket(admin).catch(() => null);
+        const { error: retryErr } = await admin.storage
+          .from(BUCKET)
+          .upload(path, buffer, { contentType: file.type, upsert: true, cacheControl: "3600" });
+        if (retryErr) { results.push({ name: file.name, url: "", error: retryErr.message }); continue; }
+      } else {
+        results.push({ name: file.name, url: "", error: upErr.message });
+        continue;
+      }
     }
+
+    const { data: { publicUrl } } = admin.storage.from(BUCKET).getPublicUrl(path);
+    results.push({ name: path, url: publicUrl });
   }
 
   return NextResponse.json({ results });
