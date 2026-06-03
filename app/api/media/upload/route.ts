@@ -12,8 +12,26 @@ const ALLOWED_MIME = [
 ];
 const MAX_SIZE_IMAGE = 10 * 1024 * 1024;   // 10 MB
 const MAX_SIZE_VIDEO = 200 * 1024 * 1024;  // 200 MB
-const MAX_SIZE = MAX_SIZE_VIDEO;
 const SAFE_FOLDER = /^[a-z0-9_-]{1,40}$/;
+
+/** Bucket yoksa oluştur, varsa MIME listesini güncelle */
+async function ensureBucket(admin: ReturnType<typeof createAdminClient>) {
+  const { data: buckets } = await admin.storage.listBuckets();
+  const exists = buckets?.some((b) => b.id === BUCKET);
+
+  const bucketConfig = {
+    public: true,
+    fileSizeLimit: MAX_SIZE_VIDEO,
+    allowedMimeTypes: ALLOWED_MIME,
+  };
+
+  if (!exists) {
+    const { error } = await admin.storage.createBucket(BUCKET, bucketConfig);
+    if (error) throw new Error(`Bucket oluşturulamadı: ${error.message}`);
+  } else {
+    await admin.storage.updateBucket(BUCKET, bucketConfig);
+  }
+}
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin();
@@ -27,26 +45,35 @@ export async function POST(req: NextRequest) {
   if (rawFolder && !SAFE_FOLDER.test(rawFolder)) {
     return NextResponse.json({ error: "Geçersiz klasör adı" }, { status: 400 });
   }
-
   if (!files.length) {
     return NextResponse.json({ error: "No files provided" }, { status: 400 });
   }
 
-  let admin;
+  let admin: ReturnType<typeof createAdminClient>;
   try {
     admin = createAdminClient();
   } catch {
-    // No service role key — fall back to user client with anon key
-    // This will work if bucket policies allow authenticated uploads
-    admin = null;
+    return NextResponse.json(
+      { error: "SUPABASE_SERVICE_ROLE_KEY eksik. Vercel Environment Variables'a ekleyin." },
+      { status: 503 }
+    );
   }
 
-  const client = admin;
+  // Bucket yoksa otomatik oluştur
+  try {
+    await ensureBucket(admin);
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Bucket hazırlanamadı" },
+      { status: 500 }
+    );
+  }
+
   const results: Array<{ name: string; url: string; error?: string }> = [];
 
   for (const file of files) {
     if (!ALLOWED_MIME.includes(file.type)) {
-      results.push({ name: file.name, url: "", error: "Desteklenmeyen dosya tipi" });
+      results.push({ name: file.name, url: "", error: `Desteklenmeyen dosya tipi: ${file.type}` });
       continue;
     }
     const isVideo = file.type.startsWith("video/");
@@ -62,7 +89,7 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    const { error } = await (client as ReturnType<typeof createAdminClient>).storage
+    const { error } = await admin.storage
       .from(BUCKET)
       .upload(safeName, buffer, {
         contentType: file.type,
@@ -73,9 +100,7 @@ export async function POST(req: NextRequest) {
     if (error) {
       results.push({ name: file.name, url: "", error: error.message });
     } else {
-      const { data: urlData } = (client as ReturnType<typeof createAdminClient>).storage
-        .from(BUCKET)
-        .getPublicUrl(safeName);
+      const { data: urlData } = admin.storage.from(BUCKET).getPublicUrl(safeName);
       results.push({ name: safeName, url: urlData.publicUrl });
     }
   }
