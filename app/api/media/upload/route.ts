@@ -3,11 +3,16 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const BUCKET = "gallery";
-const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "image/avif"];
-const MAX_SIZE = 10 * 1024 * 1024;
+const ALLOWED_MIME = [
+  "image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "image/avif",
+  "video/mp4", "video/webm", "video/ogg", "video/quicktime",
+];
+const MAX_SIZE_IMAGE = 10 * 1024 * 1024;   // 10 MB
+const MAX_SIZE_VIDEO = 200 * 1024 * 1024;  // 200 MB
+const MAX_SIZE = MAX_SIZE_VIDEO;
 const SAFE_FOLDER = /^[a-z0-9_-]{1,40}$/;
 
 export async function POST(req: NextRequest) {
@@ -44,8 +49,10 @@ export async function POST(req: NextRequest) {
       results.push({ name: file.name, url: "", error: "Desteklenmeyen dosya tipi" });
       continue;
     }
-    if (file.size > MAX_SIZE) {
-      results.push({ name: file.name, url: "", error: "Dosya 10MB'ı aşıyor" });
+    const isVideo = file.type.startsWith("video/");
+    const maxSize = isVideo ? MAX_SIZE_VIDEO : MAX_SIZE_IMAGE;
+    if (file.size > maxSize) {
+      results.push({ name: file.name, url: "", error: isVideo ? "Video 200MB'ı aşıyor" : "Görsel 10MB'ı aşıyor" });
       continue;
     }
 

@@ -50,6 +50,8 @@ export default function MagazaPage() {
   const [galleryUploading, setGalleryUploading] = useState(false);
   const imgRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
+  const [videoUploading, setVideoUploading] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -100,16 +102,41 @@ export default function MagazaPage() {
   const uploadGalleryImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files; if (!files || files.length === 0) return;
     setGalleryUploading(true);
-    const newUrls: string[] = [];
-    for (const file of Array.from(files)) {
-      const ext = file.name.split(".").pop();
-      const path = `products/gallery/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage.from("product-images").upload(path, file, { upsert: false });
-      if (!error) { const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path); newUrls.push(publicUrl); }
+    try {
+      const fd = new FormData();
+      Array.from(files).forEach(f => fd.append("files", f));
+      fd.append("folder", "products");
+      const res = await fetch("/api/media/upload", { method: "POST", body: fd });
+      const json = await res.json() as { results?: { url: string; error?: string }[] };
+      const newUrls = (json.results ?? []).filter(r => r.url && !r.error).map(r => r.url);
+      if (newUrls.length === 0) throw new Error("Hiçbir dosya yüklenemedi");
+      setF("gallery_urls", [...(form.gallery_urls || []), ...newUrls]);
+    } catch (err) {
+      alert(`Galeri yükleme hatası: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setGalleryUploading(false);
+      if (galleryRef.current) galleryRef.current.value = "";
     }
-    setF("gallery_urls", [...(form.gallery_urls || []), ...newUrls]);
-    setGalleryUploading(false);
-    if (galleryRef.current) galleryRef.current.value = "";
+  };
+
+  const uploadVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    setVideoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("files", file);
+      fd.append("folder", "products");
+      const res = await fetch("/api/media/upload", { method: "POST", body: fd });
+      const json = await res.json() as { results?: { url: string; error?: string }[] };
+      const first = json.results?.[0];
+      if (!first || first.error || !first.url) throw new Error(first?.error ?? "Video yüklenemedi");
+      setF("video_url", first.url);
+    } catch (err) {
+      alert(`Video yükleme hatası: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setVideoUploading(false);
+      if (videoRef.current) videoRef.current.value = "";
+    }
   };
 
   const removeGalleryImg = (idx: number) => setF("gallery_urls", (form.gallery_urls || []).filter((_: string, i: number) => i !== idx));
@@ -297,7 +324,29 @@ export default function MagazaPage() {
                     </button>
                   </div>
 
-                  {/* Video */}
+                  {/* Video Upload */}
+                  <div>
+                    <label style={LBL}><Upload size={12} style={{ display: "inline", marginRight: 4 }} />Video Yükle (MP4, WebM)</label>
+                    <input ref={videoRef} type="file" accept="video/*" onChange={uploadVideo} style={{ display: "none" }} />
+                    {form.video_url ? (
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <video src={form.video_url} style={{ width: 80, height: 52, objectFit: "cover", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "#000" }} />
+                        <input value={form.video_url} onChange={e => setF("video_url", e.target.value)} style={{ ...IS, fontSize: 11, flex: 1 }} placeholder="https://..." />
+                        <button type="button" onClick={() => setF("video_url", "")} style={{ background: "rgba(248,113,113,0.1)", border: "none", borderRadius: 7, color: "#f87171", cursor: "pointer", padding: "6px 8px" }}><X size={14} /></button>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <button type="button" onClick={() => videoRef.current?.click()} disabled={videoUploading} style={{ width: "100%", padding: "16px", background: "rgba(248,113,113,0.04)", border: "2px dashed rgba(248,113,113,0.15)", borderRadius: 10, color: "#f87171", cursor: "pointer", textAlign: "center" }}>
+                          <Upload size={16} style={{ margin: "0 auto 4px", display: "block" }} />
+                          <div style={{ fontSize: 13, fontWeight: 700 }}>{videoUploading ? "Yükleniyor..." : "Video Yükle"}</div>
+                          <div style={{ fontSize: 11, opacity: 0.5, marginTop: 2 }}>MP4, WebM — max 200MB</div>
+                        </button>
+                        <input value={form.video_url} onChange={e => setF("video_url", e.target.value)} style={IS} placeholder="veya video URL gir..." />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* YouTube */}
                   <div>
                     <label style={LBL}><Youtube size={12} style={{ display: "inline", marginRight: 4, color: "#f87171" }} />YouTube Video URL</label>
                     <input value={form.youtube_url} onChange={e => setF("youtube_url", e.target.value)} style={IS} placeholder="https://www.youtube.com/watch?v=..." />

@@ -24,10 +24,23 @@ export async function POST() {
   if (!exists) {
     const { error } = await admin.storage.createBucket("gallery", {
       public: true,
-      fileSizeLimit: 10485760, // 10MB
-      allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "image/avif"],
+      fileSizeLimit: 209715200, // 200MB (video desteği)
+      allowedMimeTypes: [
+        "image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "image/avif",
+        "video/mp4", "video/webm", "video/ogg", "video/quicktime",
+      ],
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  } else {
+    // Update existing bucket to allow videos
+    await admin.storage.updateBucket("gallery", {
+      public: true,
+      fileSizeLimit: 209715200,
+      allowedMimeTypes: [
+        "image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "image/avif",
+        "video/mp4", "video/webm", "video/ogg", "video/quicktime",
+      ],
+    });
   }
 
   // Upsert RLS policies via SQL (best effort)
