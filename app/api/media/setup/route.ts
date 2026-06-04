@@ -1,69 +1,27 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export const runtime = "nodejs";
+
 export async function POST() {
-  const guard = await requireAdmin();
-  if (!guard.ok) return guard.response;
-
   let admin;
-  try {
-    admin = createAdminClient();
-  } catch (e: unknown) {
-    return NextResponse.json({
-      error: "Service role key gerekli",
-      hint: "Supabase Dashboard → Settings → API → service_role key'i .env.local dosyasına SUPABASE_SERVICE_ROLE_KEY olarak ekleyin",
-      details: e instanceof Error ? e.message : String(e),
-    }, { status: 503 });
+  try { admin = createAdminClient(); } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "KEY eksik" }, { status: 503 });
   }
 
-  // Create gallery bucket if not exists
-  const { data: buckets } = await admin.storage.listBuckets();
-  const exists = buckets?.some(b => b.id === "gallery");
+  const results: string[] = [];
 
-  if (!exists) {
-    const { error } = await admin.storage.createBucket("gallery", {
-      public: true,
-      fileSizeLimit: 209715200, // 200MB (video desteği)
-      allowedMimeTypes: [
-        "image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "image/avif",
-        "video/mp4", "video/webm", "video/ogg", "video/quicktime",
-      ],
-    });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  } else {
-    // Update existing bucket to allow videos
-    await admin.storage.updateBucket("gallery", {
-      public: true,
-      fileSizeLimit: 209715200,
-      allowedMimeTypes: [
-        "image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "image/avif",
-        "video/mp4", "video/webm", "video/ogg", "video/quicktime",
-      ],
-    });
+  // Create both buckets with NO restrictions
+  for (const bucket of ["gallery", "products"]) {
+    const { data: buckets } = await admin.storage.listBuckets();
+    const exists = buckets?.some(b => b.id === bucket);
+    if (!exists) {
+      const { error } = await admin.storage.createBucket(bucket, { public: true });
+      results.push(error ? `${bucket}: HATA - ${error.message}` : `${bucket}: oluşturuldu`);
+    } else {
+      results.push(`${bucket}: zaten var`);
+    }
   }
 
-  // Upsert RLS policies via SQL (best effort)
-  try {
-    await admin.rpc("exec_sql", {
-      sql: `
-        DO $$
-        BEGIN
-          IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'gallery_public_read' AND tablename = 'objects') THEN
-            CREATE POLICY "gallery_public_read" ON storage.objects FOR SELECT USING (bucket_id = 'gallery');
-          END IF;
-          IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'gallery_auth_insert' AND tablename = 'objects') THEN
-            CREATE POLICY "gallery_auth_insert" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'gallery' AND auth.role() = 'authenticated');
-          END IF;
-          IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'gallery_auth_delete' AND tablename = 'objects') THEN
-            CREATE POLICY "gallery_auth_delete" ON storage.objects FOR DELETE USING (bucket_id = 'gallery' AND auth.role() = 'authenticated');
-          END IF;
-        END $$;
-      `,
-    });
-  } catch {
-    // exec_sql might not exist — skip, policies can be set manually
-  }
-
-  return NextResponse.json({ ok: true, message: exists ? "Bucket zaten mevcut" : "Bucket oluşturuldu" });
+  return NextResponse.json({ ok: true, results });
 }

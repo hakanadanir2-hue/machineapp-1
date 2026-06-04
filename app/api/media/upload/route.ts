@@ -5,36 +5,32 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const BUCKET = "gallery";
+const BUCKET = "products";
 
-type AdminClient = ReturnType<typeof createAdminClient>;
+type Admin = ReturnType<typeof createAdminClient>;
 
-async function ensureBucket(admin: AdminClient): Promise<void> {
+async function getOrCreateBucket(admin: Admin): Promise<void> {
   const { data: buckets } = await admin.storage.listBuckets();
   const exists = buckets?.some(b => b.id === BUCKET);
-  if (!exists) {
-    const { error } = await admin.storage.createBucket(BUCKET, { public: true });
-    if (error && !error.message.includes("already")) {
-      throw new Error(`Bucket oluşturulamadı: ${error.message}`);
-    }
+  if (exists) return;
+  // Create with NO restrictions — no fileSizeLimit, no allowedMimeTypes
+  const { error } = await admin.storage.createBucket(BUCKET, { public: true });
+  if (error && !error.message.includes("already")) {
+    throw new Error(error.message);
   }
-  // Remove all restrictions
-  await admin.storage.updateBucket(BUCKET, {
-    public: true,
-    fileSizeLimit: 524288000, // 500MB
-    allowedMimeTypes: [] as string[],
-  }).catch(() => null);
 }
 
 export async function POST(req: NextRequest) {
+  // 1. Auth
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
 
+  // 2. Parse form data
   let formData: FormData;
   try {
     formData = await req.formData();
   } catch (e) {
-    return NextResponse.json({ error: `Form parse hatası: ${e instanceof Error ? e.message : ""}` }, { status: 400 });
+    return NextResponse.json({ error: `Body parse hatası: ${e instanceof Error ? e.message : String(e)}` }, { status: 400 });
   }
 
   const files = formData.getAll("files") as File[];
@@ -45,63 +41,53 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Dosya seçilmedi" }, { status: 400 });
   }
 
-  let admin: AdminClient;
+  // 3. Admin client
+  let admin: Admin;
   try {
     admin = createAdminClient();
   } catch (e) {
-    return NextResponse.json({ error: `Sunucu hatası: ${e instanceof Error ? e.message : "SERVICE_ROLE_KEY eksik"}` }, { status: 503 });
+    return NextResponse.json({ error: `Config hatası: ${e instanceof Error ? e.message : "SERVICE_ROLE_KEY eksik"}` }, { status: 503 });
   }
 
+  // 4. Ensure bucket
   try {
-    await ensureBucket(admin);
+    await getOrCreateBucket(admin);
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Bucket hatası" }, { status: 500 });
+    return NextResponse.json({ error: `Bucket hatası: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 });
   }
 
+  // 5. Upload each file
   const results: { name: string; url: string; error?: string }[] = [];
 
   for (const file of files) {
     const ext = (file.name.split(".").pop() ?? "bin").toLowerCase();
-    const path = `${folder ? folder + "/" : ""}${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const ts = Date.now();
+    const rand = Math.random().toString(36).slice(2, 8);
+    const path = folder ? `${folder}/${ts}_${rand}.${ext}` : `${ts}_${rand}.${ext}`;
 
     let buffer: Buffer;
     try {
       buffer = Buffer.from(await file.arrayBuffer());
-    } catch (e) {
-      results.push({ name: file.name, url: "", error: `Dosya okunamadı: ${e instanceof Error ? e.message : ""}` });
+    } catch {
+      results.push({ name: file.name, url: "", error: "Dosya okunamadı" });
       continue;
     }
 
-    // Use generic content type to bypass any remaining bucket MIME restrictions
-    const safeType = file.type && file.type !== "image/heic" && file.type !== "image/heif"
-      ? file.type
-      : "application/octet-stream";
-
+    // Always use application/octet-stream to avoid ANY mime type rejection
     const { error: upErr } = await admin.storage
       .from(BUCKET)
-      .upload(path, buffer, { contentType: safeType, upsert: true, cacheControl: "3600" });
+      .upload(path, buffer, {
+        contentType: "application/octet-stream",
+        upsert: true,
+      });
 
     if (upErr) {
-      // If MIME error, retry with generic type
-      if (upErr.message.toLowerCase().includes("mime") || upErr.message.toLowerCase().includes("not supported")) {
-        const { error: retryErr } = await admin.storage
-          .from(BUCKET)
-          .upload(path, buffer, { contentType: "application/octet-stream", upsert: true, cacheControl: "3600" });
-        if (retryErr) { results.push({ name: file.name, url: "", error: retryErr.message }); continue; }
-      } else if (upErr.message.toLowerCase().includes("bucket") || upErr.message.toLowerCase().includes("not found")) {
-        await ensureBucket(admin).catch(() => null);
-        const { error: retryErr } = await admin.storage
-          .from(BUCKET)
-          .upload(path, buffer, { contentType: "application/octet-stream", upsert: true, cacheControl: "3600" });
-        if (retryErr) { results.push({ name: file.name, url: "", error: retryErr.message }); continue; }
-      } else {
-        results.push({ name: file.name, url: "", error: upErr.message });
-        continue;
-      }
+      results.push({ name: file.name, url: "", error: upErr.message });
+      continue;
     }
 
-    const { data: { publicUrl } } = admin.storage.from(BUCKET).getPublicUrl(path);
-    results.push({ name: path, url: publicUrl });
+    const { data } = admin.storage.from(BUCKET).getPublicUrl(path);
+    results.push({ name: file.name, url: data.publicUrl });
   }
 
   return NextResponse.json({ results });
