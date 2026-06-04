@@ -43,6 +43,12 @@ async function uploadFiles(files: File[], folder = "products"): Promise<{ url: s
   files.forEach(f => fd.append("files", f));
   fd.append("folder", folder);
   const res = await fetch("/api/media/upload", { method: "POST", body: fd });
+  if (!res.ok) {
+    const text = await res.text();
+    let msg = `HTTP ${res.status}`;
+    try { const j = JSON.parse(text); msg = j.error || msg; } catch { msg = text.slice(0, 200) || msg; }
+    throw new Error(msg);
+  }
   const json = await res.json() as { results?: { url: string; error?: string }[]; error?: string };
   if (json.error) throw new Error(json.error);
   return json.results ?? [];
@@ -277,19 +283,23 @@ export default function MagazaPage() {
     if (!files.length) return;
     setGalleryUploading(true); setGalleryProgress(0);
     const newUrls: string[] = [];
+    let lastErr = "";
     const BATCH = 3;
     let done = 0;
     for (let i = 0; i < files.length; i += BATCH) {
       const batch = files.slice(i, i + BATCH);
       try {
         const results = await uploadFiles(batch);
-        results.forEach(r => { if (r.url && !r.error) newUrls.push(r.url); });
-      } catch { /* skip batch */ }
+        results.forEach(r => {
+          if (r.url && !r.error) newUrls.push(r.url);
+          else if (r.error) lastErr = r.error;
+        });
+      } catch (e) { lastErr = e instanceof Error ? e.message : String(e); }
       done += batch.length;
       setGalleryProgress(Math.round((done / files.length) * 100));
     }
     if (newUrls.length === 0) {
-      alert("Hiçbir görsel yüklenemedi. Dosya formatını/boyutunu kontrol edin.");
+      alert(lastErr || "Yükleme başarısız. Lütfen tekrar deneyin.");
     } else {
       setForm(prev => ({ ...prev, gallery_urls: [...(prev.gallery_urls || []), ...newUrls] }));
     }
@@ -492,7 +502,7 @@ export default function MagazaPage() {
                       </div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <DropZone onFiles={handleCoverFiles} accept="image/*" uploading={coverUploading} uploadProgress={coverProgress} label="Kapak Görseli Yükle" subLabel="JPG, PNG, WebP — max 10 MB" color="#D4AF37" />
+                        <DropZone onFiles={handleCoverFiles} uploading={coverUploading} uploadProgress={coverProgress} label="Kapak Görseli Yükle" subLabel="JPG, PNG, WebP — max 10 MB" color="#D4AF37" />
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} /><span style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}>veya URL gir</span><div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
                         </div>
@@ -514,7 +524,7 @@ export default function MagazaPage() {
                       )}
                     </div>
                     <GalleryGrid urls={form.gallery_urls || []} onRemove={removeGalleryImg} onReorder={reorderGallery} />
-                    <DropZone onFiles={handleGalleryFiles} accept="image/*" multiple uploading={galleryUploading} uploadProgress={galleryProgress} label="Galeri Görselleri Ekle" subLabel="Birden fazla seç veya toplu sürükle" color="#60a5fa" />
+                    <DropZone onFiles={handleGalleryFiles} multiple uploading={galleryUploading} uploadProgress={galleryProgress} label="Galeri Görselleri Ekle" subLabel="Birden fazla seç veya toplu sürükle" color="#60a5fa" />
                     {(form.gallery_urls || []).length > 0 && <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 11, marginTop: 6 }}>Görselleri sürükleyerek sıralayabilirsiniz.</p>}
                   </div>
 
