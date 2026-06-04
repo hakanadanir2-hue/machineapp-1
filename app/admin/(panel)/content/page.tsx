@@ -81,11 +81,11 @@ export default function ContentPage() {
   const uploadFile = async (files: FileList | null) => {
     if (!files?.length) return;
     setUploading(true);
-    for (const file of Array.from(files)) {
-      const ext = file.name.split(".").pop();
-      const name = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      await supabase.storage.from("gallery").upload(name, file, { upsert: false });
-    }
+    try {
+      const fd = new FormData();
+      Array.from(files).forEach(f => fd.append("files", f));
+      await fetch("/api/media/upload", { method: "POST", body: fd });
+    } catch { /* ignore */ }
     setUploading(false);
     if (fileRef.current) fileRef.current.value = "";
     loadMedia();

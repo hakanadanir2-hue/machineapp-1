@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useRef, useCallback, DragEvent } from "react";
+import React, { useEffect, useState, useId, useCallback, DragEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   Plus, Search, Package, ShoppingCart, Tag, BarChart2,
@@ -48,80 +48,94 @@ async function uploadFiles(files: File[], folder = "products"): Promise<{ url: s
   return json.results ?? [];
 }
 
-// ─── Drag-and-Drop Zone ───────────────────────────────────────────────────────
+// ─── DropZone — uses <label htmlFor> for guaranteed click ─────────────────────
 interface DropZoneProps {
   onFiles: (files: File[]) => void;
   accept?: string;
   multiple?: boolean;
   disabled?: boolean;
   uploading?: boolean;
-  uploadProgress?: number; // 0-100
+  uploadProgress?: number;
   label: string;
   subLabel?: string;
   color?: string;
-  children?: React.ReactNode;
 }
 
-function DropZone({ onFiles, accept, multiple = false, disabled, uploading, uploadProgress, label, subLabel, color = "#D4AF37", children }: DropZoneProps) {
+function DropZone({ onFiles, accept, multiple = false, disabled, uploading, uploadProgress, label, subLabel, color = "#D4AF37" }: DropZoneProps) {
+  const id = useId();
   const [dragging, setDragging] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); setDragging(false);
-    if (disabled) return;
-    const files = Array.from(e.dataTransfer.files).filter(f => !accept || f.type.match(accept.replace("*", ".*")));
-    if (files.length) onFiles(multiple ? files : [files[0]]);
-  }, [onFiles, disabled, accept, multiple]);
+    e.preventDefault(); e.stopPropagation(); setDragging(false);
+    if (disabled || uploading) return;
+    const dropped = Array.from(e.dataTransfer.files);
+    if (dropped.length) onFiles(multiple ? dropped : [dropped[0]]);
+  }, [onFiles, disabled, uploading, multiple]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
-    if (files.length) onFiles(files);
-    if (inputRef.current) inputRef.current.value = "";
+    if (files.length) onFiles(multiple ? files : [files[0]]);
+    e.target.value = "";
   };
 
   return (
     <div
-      onDragOver={e => { e.preventDefault(); if (!disabled) setDragging(true); }}
-      onDragLeave={() => setDragging(false)}
+      onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (!disabled && !uploading) setDragging(true); }}
+      onDragLeave={e => { e.preventDefault(); e.stopPropagation(); setDragging(false); }}
       onDrop={handleDrop}
-      onClick={() => !disabled && inputRef.current?.click()}
-      style={{
-        width: "100%", padding: "24px 16px", borderRadius: 12, cursor: disabled ? "not-allowed" : "pointer",
-        border: `2px dashed ${dragging ? color : `${color}33`}`,
-        background: dragging ? `${color}0d` : "transparent",
-        textAlign: "center", transition: "all 0.15s", opacity: disabled ? 0.5 : 1,
-      }}
+      style={{ position: "relative" }}
     >
-      <input ref={inputRef} type="file" accept={accept} multiple={multiple} onChange={handleChange} style={{ display: "none" }} />
-      {uploading ? (
-        <div>
-          <Loader2 size={22} style={{ margin: "0 auto 8px", display: "block", color, animation: "spin 1s linear infinite" }} />
-          <div style={{ fontSize: 13, fontWeight: 700, color }}>Yükleniyor...</div>
-          {uploadProgress !== undefined && (
-            <div style={{ marginTop: 8, width: "80%", marginLeft: "auto", marginRight: "auto" }}>
-              <div style={{ height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
-                <div style={{ height: "100%", width: `${uploadProgress}%`, background: color, borderRadius: 2, transition: "width 0.2s" }} />
+      {/* Hidden file input */}
+      <input
+        id={id}
+        type="file"
+        accept={accept}
+        multiple={multiple}
+        onChange={handleChange}
+        disabled={disabled || uploading}
+        style={{ position: "absolute", width: 0, height: 0, opacity: 0, pointerEvents: "none" }}
+      />
+      {/* Clickable label */}
+      <label
+        htmlFor={id}
+        style={{
+          display: "block", width: "100%", padding: "24px 16px", borderRadius: 12,
+          cursor: (disabled || uploading) ? "not-allowed" : "pointer",
+          border: `2px dashed ${dragging ? color : `${color}33`}`,
+          background: dragging ? `${color}0d` : "transparent",
+          textAlign: "center", transition: "all 0.15s",
+          opacity: (disabled || uploading) ? 0.5 : 1,
+        }}
+      >
+        {uploading ? (
+          <div>
+            <Loader2 size={22} style={{ margin: "0 auto 8px", display: "block", color, animation: "spin 1s linear infinite" }} />
+            <div style={{ fontSize: 13, fontWeight: 700, color }}>Yükleniyor...</div>
+            {uploadProgress !== undefined && uploadProgress > 0 && (
+              <div style={{ marginTop: 8, width: "80%", marginLeft: "auto", marginRight: "auto" }}>
+                <div style={{ height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
+                  <div style={{ height: "100%", width: `${uploadProgress}%`, background: color, borderRadius: 2, transition: "width 0.2s" }} />
+                </div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 4 }}>{uploadProgress}%</div>
               </div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 4 }}>{uploadProgress}%</div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div>
-          <Upload size={20} style={{ margin: "0 auto 8px", display: "block", color }} />
-          <div style={{ fontSize: 13, fontWeight: 700, color }}>{label}</div>
-          {subLabel && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 3 }}>{subLabel}</div>}
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", marginTop: 6 }}>
-            Sürükle & bırak veya tıkla {multiple ? "— toplu seçim desteklenir" : ""}
+            )}
           </div>
-        </div>
-      )}
-      {children}
+        ) : (
+          <div>
+            <Upload size={20} style={{ margin: "0 auto 8px", display: "block", color }} />
+            <div style={{ fontSize: 13, fontWeight: 700, color }}>{label}</div>
+            {subLabel && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 3 }}>{subLabel}</div>}
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", marginTop: 6 }}>
+              Sürükle & bırak veya tıkla{multiple ? " — toplu seçim desteklenir" : ""}
+            </div>
+          </div>
+        )}
+      </label>
     </div>
   );
 }
 
-// ─── Gallery Grid with drag-to-reorder ───────────────────────────────────────
+// ─── Gallery Grid — drag-to-reorder ──────────────────────────────────────────
 function GalleryGrid({ urls, onRemove, onReorder }: {
   urls: string[];
   onRemove: (idx: number) => void;
@@ -130,7 +144,7 @@ function GalleryGrid({ urls, onRemove, onReorder }: {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
 
-  if (urls.length === 0) return null;
+  if (!urls.length) return null;
 
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
@@ -149,20 +163,9 @@ function GalleryGrid({ urls, onRemove, onReorder }: {
             transition: "opacity 0.15s",
           }}
         >
-          <img
-            src={url}
-            alt={`galeri-${idx}`}
-            style={{ width: 68, height: 68, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", display: "block" }}
-          />
-          {/* drag handle */}
-          <div style={{ position: "absolute", bottom: 2, left: 2, color: "rgba(255,255,255,0.4)", lineHeight: 0 }}>
-            <GripVertical size={12} />
-          </div>
-          <button
-            type="button"
-            onClick={e => { e.stopPropagation(); onRemove(idx); }}
-            style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "#ef4444", border: "2px solid #141414", color: "#fff", cursor: "pointer", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}
-          >×</button>
+          <img src={url} alt={`galeri-${idx}`} style={{ width: 68, height: 68, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", display: "block" }} />
+          <div style={{ position: "absolute", bottom: 2, left: 2, color: "rgba(255,255,255,0.4)", lineHeight: 0 }}><GripVertical size={12} /></div>
+          <button type="button" onClick={e => { e.stopPropagation(); onRemove(idx); }} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "#ef4444", border: "2px solid #141414", color: "#fff", cursor: "pointer", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>×</button>
           <div style={{ position: "absolute", bottom: 2, right: 2, background: "rgba(0,0,0,0.55)", borderRadius: 3, fontSize: 9, color: "rgba(255,255,255,0.6)", padding: "1px 3px" }}>{idx + 1}</div>
         </div>
       ))}
@@ -196,7 +199,14 @@ export default function MagazaPage() {
   const load = async () => {
     setLoading(true);
     const { data } = await supabase.from("products").select("*").order("order_index").order("created_at", { ascending: false });
-    setProducts((data || []).map((p: Record<string, unknown>) => ({ ...p, gallery_urls: Array.isArray(p.gallery_urls) ? p.gallery_urls : [] })) as Product[]);
+    setProducts((data || []).map((p: Record<string, unknown>) => {
+      let gallery: string[] = [];
+      if (Array.isArray(p.gallery_urls)) gallery = p.gallery_urls as string[];
+      else if (typeof p.gallery_urls === "string") {
+        try { const parsed = JSON.parse(p.gallery_urls as string); if (Array.isArray(parsed)) gallery = parsed; } catch { /* not JSON */ }
+      }
+      return { ...p, gallery_urls: gallery } as Product;
+    }));
     setLoading(false);
   };
 
@@ -205,13 +215,18 @@ export default function MagazaPage() {
   const openAdd = () => { setEditId(null); setForm({ ...EMPTY }); setMTab("genel"); setModal("add"); };
   const openEdit = (p: Product) => {
     setEditId(p.id);
+    let gallery: string[] = [];
+    if (Array.isArray(p.gallery_urls)) gallery = p.gallery_urls;
+    else if (typeof p.gallery_urls === "string") {
+      try { const parsed = JSON.parse(p.gallery_urls as unknown as string); if (Array.isArray(parsed)) gallery = parsed; } catch { /* */ }
+    }
     setForm({
       name: p.name, slug: p.slug, sku: p.sku || "", category: p.category,
       short_description: p.short_description || "", long_description: p.long_description || "",
       price: p.price, discounted_price: p.discounted_price, stock: p.stock,
       sizes: p.sizes || "", colors: p.colors || "",
       cover_image_url: p.cover_image_url || "", video_url: p.video_url || "", youtube_url: p.youtube_url || "",
-      gallery_urls: Array.isArray(p.gallery_urls) ? p.gallery_urls : [],
+      gallery_urls: gallery,
       weight: p.weight || "", dimensions: p.dimensions || "", material: p.material || "", tags: p.tags || "",
       is_featured: p.is_featured, is_new: p.is_new, is_active: p.is_active,
       seo_title: p.seo_title || "", seo_description: p.seo_description || "", order_index: p.order_index || 0,
@@ -222,7 +237,11 @@ export default function MagazaPage() {
   const save = async () => {
     if (!form.name.trim()) return;
     setSaving(true);
-    const payload = { ...form, slug: form.slug || slugify(form.name), gallery_urls: JSON.stringify(form.gallery_urls) };
+    const payload = {
+      ...form,
+      slug: form.slug || slugify(form.name),
+      gallery_urls: form.gallery_urls, // save as array directly (jsonb column)
+    };
     if (editId) await supabase.from("products").update(payload).eq("id", editId);
     else await supabase.from("products").insert(payload);
     setSaving(false); setModal(null); load();
@@ -234,11 +253,12 @@ export default function MagazaPage() {
     setDeleteId(null); load();
   };
 
-  // ── Cover image upload (single) ──
-  const handleCoverFiles = async (files: File[]) => {
+  // ── Cover image upload ──
+  const handleCoverFiles = useCallback(async (files: File[]) => {
     const file = files[0]; if (!file) return;
     setCoverUploading(true); setCoverProgress(10);
     try {
+      setCoverProgress(30);
       const results = await uploadFiles([file]);
       setCoverProgress(90);
       const first = results[0];
@@ -248,38 +268,36 @@ export default function MagazaPage() {
     } catch (err) {
       alert(`Kapak görseli hatası: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
-      setTimeout(() => { setCoverUploading(false); setCoverProgress(0); }, 500);
+      setTimeout(() => { setCoverUploading(false); setCoverProgress(0); }, 400);
     }
-  };
+  }, []);
 
-  // ── Gallery upload (multiple) with per-file progress ──
-  const handleGalleryFiles = async (files: File[]) => {
+  // ── Gallery upload (multi) ──
+  const handleGalleryFiles = useCallback(async (files: File[]) => {
     if (!files.length) return;
-    setGalleryUploading(true);
-    setGalleryProgress(0);
+    setGalleryUploading(true); setGalleryProgress(0);
     const newUrls: string[] = [];
-    let done = 0;
-    // upload in batches of 3
     const BATCH = 3;
+    let done = 0;
     for (let i = 0; i < files.length; i += BATCH) {
       const batch = files.slice(i, i + BATCH);
       try {
         const results = await uploadFiles(batch);
         results.forEach(r => { if (r.url && !r.error) newUrls.push(r.url); });
-      } catch {/* skip failed batch */}
+      } catch { /* skip batch */ }
       done += batch.length;
       setGalleryProgress(Math.round((done / files.length) * 100));
     }
     if (newUrls.length === 0) {
-      alert("Hiçbir görsel yüklenemedi. Dosya formatını ve boyutunu kontrol edin.");
+      alert("Hiçbir görsel yüklenemedi. Dosya formatını/boyutunu kontrol edin.");
     } else {
-      setF("gallery_urls", [...(form.gallery_urls || []), ...newUrls]);
+      setForm(prev => ({ ...prev, gallery_urls: [...(prev.gallery_urls || []), ...newUrls] }));
     }
-    setTimeout(() => { setGalleryUploading(false); setGalleryProgress(0); }, 500);
-  };
+    setTimeout(() => { setGalleryUploading(false); setGalleryProgress(0); }, 400);
+  }, []);
 
   // ── Video upload ──
-  const handleVideoFiles = async (files: File[]) => {
+  const handleVideoFiles = useCallback(async (files: File[]) => {
     const file = files[0]; if (!file) return;
     setVideoUploading(true);
     try {
@@ -292,14 +310,20 @@ export default function MagazaPage() {
     } finally {
       setVideoUploading(false);
     }
+  }, []);
+
+  // ── Gallery reorder ──
+  const reorderGallery = (from: number, to: number) => {
+    setForm(prev => {
+      const arr = [...(prev.gallery_urls || [])];
+      const [item] = arr.splice(from, 1);
+      arr.splice(to, 0, item);
+      return { ...prev, gallery_urls: arr };
+    });
   };
 
-  // ── Gallery reorder (drag within grid) ──
-  const reorderGallery = (from: number, to: number) => {
-    const arr = [...(form.gallery_urls || [])];
-    const [item] = arr.splice(from, 1);
-    arr.splice(to, 0, item);
-    setF("gallery_urls", arr);
+  const removeGalleryImg = (idx: number) => {
+    setForm(prev => ({ ...prev, gallery_urls: (prev.gallery_urls || []).filter((_, i) => i !== idx) }));
   };
 
   const filtered = products.filter(p => {
@@ -308,24 +332,22 @@ export default function MagazaPage() {
   });
 
   const stats = [
-    { label: "Toplam",   value: products.length,                              icon: Package,      color: "#D4AF37" },
-    { label: "Aktif",    value: products.filter(p => p.is_active).length,    icon: ShoppingCart, color: "#4ade80" },
-    { label: "Öne Çıkan",value: products.filter(p => p.is_featured).length,  icon: Tag,          color: "#f59e0b" },
-    { label: "Stoksuz",  value: products.filter(p => p.stock === 0).length,  icon: BarChart2,    color: "#f87171" },
+    { label: "Toplam", value: products.length, icon: Package, color: "#D4AF37" },
+    { label: "Aktif", value: products.filter(p => p.is_active).length, icon: ShoppingCart, color: "#4ade80" },
+    { label: "Öne Çıkan", value: products.filter(p => p.is_featured).length, icon: Tag, color: "#f59e0b" },
+    { label: "Stoksuz", value: products.filter(p => p.stock === 0).length, icon: BarChart2, color: "#f87171" },
   ];
 
   const MTABS: { id: ModalTab; label: string }[] = [
-    { id: "genel", label: "Genel" },
-    { id: "medya", label: "Medya" },
-    { id: "detay", label: "Fiyat & Detay" },
-    { id: "seo",   label: "SEO" },
+    { id: "genel", label: "Genel" }, { id: "medya", label: "Medya" },
+    { id: "detay", label: "Fiyat & Detay" }, { id: "seo", label: "SEO" },
   ];
 
   return (
     <div style={{ maxWidth: 1100 }}>
-      {/* spin keyframe inline */}
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
+      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28, flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ color: "#fff", fontWeight: 800, fontSize: 26, letterSpacing: "-0.02em", margin: "0 0 6px" }}>Mağaza</h1>
@@ -336,6 +358,7 @@ export default function MagazaPage() {
         </button>
       </div>
 
+      {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 12, marginBottom: 24 }}>
         {stats.map(s => (
           <div key={s.label} style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12 }}>
@@ -345,6 +368,7 @@ export default function MagazaPage() {
         ))}
       </div>
 
+      {/* Filters */}
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ position: "relative" }}>
           <Search style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 13, height: 13, color: "rgba(255,255,255,0.25)" }} />
@@ -355,37 +379,29 @@ export default function MagazaPage() {
         ))}
       </div>
 
+      {/* Table */}
       <div style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, overflow: "hidden" }}>
-        {loading
-          ? <p style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.25)", fontSize: 13 }}>Yükleniyor...</p>
-          : filtered.length === 0
-          ? <p style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.25)", fontSize: 13 }}>Ürün bulunamadı</p>
+        {loading ? <p style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.25)", fontSize: 13 }}>Yükleniyor...</p>
+          : filtered.length === 0 ? <p style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.25)", fontSize: 13 }}>Ürün bulunamadı</p>
           : (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", background: "rgba(0,0,0,0.3)" }}>
-                    {["Ürün","Kategori","Fiyat","Stok","Medya","Durum","İşlemler"].map(h => (
-                      <th key={h} style={{ textAlign: "left", color: "rgba(255,255,255,0.3)", fontWeight: 600, fontSize: 11, padding: "10px 14px", whiteSpace: "nowrap" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
+                <thead><tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", background: "rgba(0,0,0,0.3)" }}>
+                  {["Ürün","Kategori","Fiyat","Stok","Medya","Durum","İşlem"].map(h => (
+                    <th key={h} style={{ textAlign: "left", color: "rgba(255,255,255,0.3)", fontWeight: 600, fontSize: 11, padding: "10px 14px", whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr></thead>
                 <tbody>
                   {filtered.map(p => (
                     <tr key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                       <td style={{ padding: "12px 14px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          {p.cover_image_url
-                            ? <img src={p.cover_image_url} alt={p.name} style={{ width: 36, height: 36, borderRadius: 7, objectFit: "cover", flexShrink: 0 }} />
-                            : <div style={{ width: 36, height: 36, background: "#0F0F0F", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Package style={{ width: 16, height: 16, color: "rgba(255,255,255,0.15)" }} /></div>}
+                          {p.cover_image_url ? <img src={p.cover_image_url} alt={p.name} style={{ width: 36, height: 36, borderRadius: 7, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 36, height: 36, background: "#0F0F0F", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Package style={{ width: 16, height: 16, color: "rgba(255,255,255,0.15)" }} /></div>}
                           <div><p style={{ color: "#fff", fontWeight: 600, fontSize: 13, margin: 0 }}>{p.name}</p><p style={{ color: "rgba(255,255,255,0.3)", fontSize: 11, margin: 0 }}>{p.sku || "—"}</p></div>
                         </div>
                       </td>
                       <td style={{ padding: "12px 14px" }}><span style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>{p.category}</span></td>
-                      <td style={{ padding: "12px 14px" }}>
-                        <p style={{ color: "#fff", fontWeight: 700, fontSize: 13, margin: 0 }}>{p.price.toLocaleString("tr-TR")} ₺</p>
-                        {p.discounted_price && <p style={{ color: "#4ade80", fontSize: 11, margin: 0 }}>{p.discounted_price.toLocaleString("tr-TR")} ₺</p>}
-                      </td>
+                      <td style={{ padding: "12px 14px" }}><p style={{ color: "#fff", fontWeight: 700, fontSize: 13, margin: 0 }}>{p.price.toLocaleString("tr-TR")} ₺</p>{p.discounted_price && <p style={{ color: "#4ade80", fontSize: 11, margin: 0 }}>{p.discounted_price.toLocaleString("tr-TR")} ₺</p>}</td>
                       <td style={{ padding: "12px 14px" }}><span style={{ color: p.stock === 0 ? "#f87171" : p.stock < 5 ? "#facc15" : "#4ade80", fontWeight: 700, fontSize: 13 }}>{p.stock}</span></td>
                       <td style={{ padding: "12px 14px" }}>
                         <div style={{ display: "flex", gap: 4 }}>
@@ -398,7 +414,6 @@ export default function MagazaPage() {
                         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                           <span style={{ padding: "2px 7px", borderRadius: 5, fontSize: 10, fontWeight: 700, background: p.is_active ? "rgba(74,222,128,0.12)" : "rgba(255,255,255,0.06)", color: p.is_active ? "#4ade80" : "rgba(255,255,255,0.3)" }}>{p.is_active ? "Aktif" : "Pasif"}</span>
                           {p.is_featured && <span style={{ padding: "2px 7px", borderRadius: 5, fontSize: 10, fontWeight: 700, background: "rgba(212,175,55,0.12)", color: "#D4AF37" }}>Öne Çıkan</span>}
-                          {p.is_new && <span style={{ padding: "2px 7px", borderRadius: 5, fontSize: 10, fontWeight: 700, background: "rgba(96,165,250,0.12)", color: "#60a5fa" }}>Yeni</span>}
                         </div>
                       </td>
                       <td style={{ padding: "12px 14px" }}>
@@ -415,25 +430,28 @@ export default function MagazaPage() {
           )}
       </div>
 
-      {/* ─── Modal ─────────────────────────────────────────────────────────────── */}
+      {/* ═══ Modal ═══ */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "24px 16px", overflowY: "auto" }}>
-          <div style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, width: "100%", maxWidth: 660, marginTop: 24 }}>
+        <div onClick={() => setModal(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "24px 16px", overflowY: "auto" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, width: "100%", maxWidth: 660, marginTop: 24 }}>
+            {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 24px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-              <h2 style={{ color: "#fff", fontWeight: 700, fontSize: 16, margin: 0 }}>{modal === "add" ? "Yeni Ürün" : "Ürünü Düzenle"}</h2>
+              <h2 style={{ color: "#fff", fontWeight: 700, fontSize: 16, margin: 0 }}>{modal === "add" ? "Yeni Ürün Ekle" : "Ürünü Düzenle"}</h2>
               <button onClick={() => setModal(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 22 }}>×</button>
             </div>
+            {/* Tabs */}
             <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
               {MTABS.map(t => (
                 <button key={t.id} onClick={() => setMTab(t.id)} style={{ flex: 1, padding: "10px", background: "none", border: "none", borderBottom: `2px solid ${mTab === t.id ? "#D4AF37" : "transparent"}`, color: mTab === t.id ? "#fff" : "rgba(255,255,255,0.35)", fontSize: 13, fontWeight: mTab === t.id ? 600 : 400, cursor: "pointer" }}>{t.label}</button>
               ))}
             </div>
+            {/* Content */}
             <div style={{ padding: 24 }}>
 
-              {/* ─ GENEL ─ */}
+              {/* GENEL TAB */}
               {mTab === "genel" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  <div><label style={LBL}>Ürün Adı *</label><input value={form.name} onChange={e => { setF("name", e.target.value); setF("slug", slugify(e.target.value)); }} style={IS} placeholder="Örn: Machine Gym Boks Eldiveni" /></div>
+                  <div><label style={LBL}>Ürün Adı *</label><input value={form.name} onChange={e => { setF("name", e.target.value); if (!editId) setF("slug", slugify(e.target.value)); }} style={IS} placeholder="Örn: Machine Gym Boks Eldiveni" /></div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div><label style={LBL}>SKU</label><input value={form.sku} onChange={e => setF("sku", e.target.value)} style={IS} placeholder="MG-001" /></div>
                     <div><label style={LBL}>Kategori</label><select value={form.category} onChange={e => setF("category", e.target.value)} style={IS}>{CATS.filter(c => c !== "Tümü").map(c => <option key={c} value={c}>{c}</option>)}</select></div>
@@ -442,11 +460,11 @@ export default function MagazaPage() {
                   <div><label style={LBL}>Uzun Açıklama</label><textarea value={form.long_description} onChange={e => setF("long_description", e.target.value)} rows={3} style={TS} placeholder="Ürün detay sayfasında görünür" /></div>
                   <div><label style={LBL}>Etiketler (virgülle)</label><input value={form.tags} onChange={e => setF("tags", e.target.value)} style={IS} placeholder="boks, spor, eldiven" /></div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    <div><label style={LBL}>Bedenler (virgülle)</label><input value={form.sizes} onChange={e => setF("sizes", e.target.value)} style={IS} placeholder="XS, S, M, L, XL" /></div>
-                    <div><label style={LBL}>Renkler (virgülle)</label><input value={form.colors} onChange={e => setF("colors", e.target.value)} style={IS} placeholder="Siyah, Kırmızı" /></div>
+                    <div><label style={LBL}>Bedenler</label><input value={form.sizes} onChange={e => setF("sizes", e.target.value)} style={IS} placeholder="XS, S, M, L, XL" /></div>
+                    <div><label style={LBL}>Renkler</label><input value={form.colors} onChange={e => setF("colors", e.target.value)} style={IS} placeholder="Siyah, Kırmızı" /></div>
                   </div>
                   <div style={{ display: "flex", gap: 20 }}>
-                    {[{ k: "is_active" as const, l: "Aktif" }, { k: "is_featured" as const, l: "Öne Çıkan" }, { k: "is_new" as const, l: "Yeni Ürün" }].map(({ k, l }) => (
+                    {[{ k: "is_active" as const, l: "Aktif" }, { k: "is_featured" as const, l: "Öne Çıkan" }, { k: "is_new" as const, l: "Yeni" }].map(({ k, l }) => (
                       <label key={k} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                         <input type="checkbox" checked={!!form[k]} onChange={e => setF(k, e.target.checked)} style={{ width: 15, height: 15, accentColor: "#D4AF37" }} />
                         <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>{l}</span>
@@ -456,7 +474,7 @@ export default function MagazaPage() {
                 </div>
               )}
 
-              {/* ─ MEDYA ─ */}
+              {/* MEDYA TAB */}
               {mTab === "medya" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
 
@@ -467,36 +485,16 @@ export default function MagazaPage() {
                       <div style={{ display: "flex", gap: 10, alignItems: "center", background: "#0F0F0F", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "8px 10px" }}>
                         <img src={form.cover_image_url} alt="cover" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", flexShrink: 0 }} />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <input value={form.cover_image_url} onChange={e => setF("cover_image_url", e.target.value)} style={{ ...IS, fontSize: 11 }} placeholder="https://..." />
-                          <button
-                            type="button"
-                            onClick={() => handleCoverFiles([])}
-                            style={{ marginTop: 6, fontSize: 11, color: "#D4AF37", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                          >
-                            ↩ Değiştir
-                          </button>
+                          <input value={form.cover_image_url} onChange={e => setF("cover_image_url", e.target.value)} style={{ ...IS, fontSize: 11 }} />
+                          <button type="button" onClick={() => setF("cover_image_url", "")} style={{ marginTop: 6, fontSize: 11, color: "#D4AF37", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Görseli Değiştir</button>
                         </div>
-                        <button type="button" onClick={() => setF("cover_image_url", "")} style={{ background: "rgba(248,113,113,0.1)", border: "none", borderRadius: 7, color: "#f87171", cursor: "pointer", padding: "6px 8px", flexShrink: 0 }}>
-                          <X size={14} />
-                        </button>
+                        <button type="button" onClick={() => setF("cover_image_url", "")} style={{ background: "rgba(248,113,113,0.1)", border: "none", borderRadius: 7, color: "#f87171", cursor: "pointer", padding: "6px 8px", flexShrink: 0 }}><X size={14} /></button>
                       </div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <DropZone
-                          onFiles={handleCoverFiles}
-                          accept="image/*"
-                          multiple={false}
-                          uploading={coverUploading}
-                          uploadProgress={coverProgress}
-                          label="Kapak Görseli Sürükle & Bırak"
-                          subLabel="JPG, PNG, WebP, AVIF — max 10 MB"
-                          color="#D4AF37"
-                          disabled={coverUploading}
-                        />
+                        <DropZone onFiles={handleCoverFiles} accept="image/*" uploading={coverUploading} uploadProgress={coverProgress} label="Kapak Görseli Yükle" subLabel="JPG, PNG, WebP — max 10 MB" color="#D4AF37" />
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
-                          <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}>veya URL gir</span>
-                          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
+                          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} /><span style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}>veya URL gir</span><div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
                         </div>
                         <input value={form.cover_image_url} onChange={e => setF("cover_image_url", e.target.value)} style={IS} placeholder="https://..." />
                       </div>
@@ -509,68 +507,31 @@ export default function MagazaPage() {
                       <label style={{ ...LBL, margin: 0 }}>
                         <Images size={12} style={{ display: "inline", marginRight: 4 }} />
                         Galeri Görselleri
-                        {(form.gallery_urls || []).length > 0 && (
-                          <span style={{ marginLeft: 6, background: "rgba(212,175,55,0.15)", color: "#D4AF37", fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 10 }}>
-                            {(form.gallery_urls || []).length} adet
-                          </span>
-                        )}
+                        {(form.gallery_urls || []).length > 0 && <span style={{ marginLeft: 6, background: "rgba(212,175,55,0.15)", color: "#D4AF37", fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 10 }}>{(form.gallery_urls || []).length}</span>}
                       </label>
                       {(form.gallery_urls || []).length > 0 && (
-                        <button type="button" onClick={() => setF("gallery_urls", [])} style={{ fontSize: 11, color: "#f87171", background: "none", border: "none", cursor: "pointer" }}>Tümünü Temizle</button>
+                        <button type="button" onClick={() => setF("gallery_urls", [])} style={{ fontSize: 11, color: "#f87171", background: "none", border: "none", cursor: "pointer" }}>Tümünü Sil</button>
                       )}
                     </div>
-
-                    <GalleryGrid
-                      urls={form.gallery_urls || []}
-                      onRemove={idx => setF("gallery_urls", (form.gallery_urls || []).filter((_: string, i: number) => i !== idx))}
-                      onReorder={reorderGallery}
-                    />
-
-                    <DropZone
-                      onFiles={handleGalleryFiles}
-                      accept="image/*"
-                      multiple={true}
-                      uploading={galleryUploading}
-                      uploadProgress={galleryProgress}
-                      label="Galeri Görselleri Ekle"
-                      subLabel="Birden fazla seç veya toplu sürükle — JPG, PNG, WebP"
-                      color="#60a5fa"
-                      disabled={galleryUploading}
-                    />
-                    {(form.gallery_urls || []).length > 0 && (
-                      <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 11, marginTop: 6 }}>
-                        Görselleri sürükleyerek sıralayabilirsiniz.
-                      </p>
-                    )}
+                    <GalleryGrid urls={form.gallery_urls || []} onRemove={removeGalleryImg} onReorder={reorderGallery} />
+                    <DropZone onFiles={handleGalleryFiles} accept="image/*" multiple uploading={galleryUploading} uploadProgress={galleryProgress} label="Galeri Görselleri Ekle" subLabel="Birden fazla seç veya toplu sürükle" color="#60a5fa" />
+                    {(form.gallery_urls || []).length > 0 && <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 11, marginTop: 6 }}>Görselleri sürükleyerek sıralayabilirsiniz.</p>}
                   </div>
 
-                  {/* Video Upload */}
+                  {/* Video */}
                   <div>
-                    <label style={LBL}>Ürün Videosu (MP4 / WebM)</label>
+                    <label style={LBL}>Ürün Videosu</label>
                     {form.video_url ? (
                       <div style={{ display: "flex", gap: 8, alignItems: "center", background: "#0F0F0F", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "8px 10px" }}>
                         <video src={form.video_url} style={{ width: 80, height: 52, objectFit: "cover", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "#000", flexShrink: 0 }} />
-                        <input value={form.video_url} onChange={e => setF("video_url", e.target.value)} style={{ ...IS, fontSize: 11, flex: 1 }} placeholder="https://..." />
-                        <button type="button" onClick={() => setF("video_url", "")} style={{ background: "rgba(248,113,113,0.1)", border: "none", borderRadius: 7, color: "#f87171", cursor: "pointer", padding: "6px 8px", flexShrink: 0 }}>
-                          <X size={14} />
-                        </button>
+                        <input value={form.video_url} onChange={e => setF("video_url", e.target.value)} style={{ ...IS, fontSize: 11, flex: 1 }} />
+                        <button type="button" onClick={() => setF("video_url", "")} style={{ background: "rgba(248,113,113,0.1)", border: "none", borderRadius: 7, color: "#f87171", cursor: "pointer", padding: "6px 8px", flexShrink: 0 }}><X size={14} /></button>
                       </div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <DropZone
-                          onFiles={handleVideoFiles}
-                          accept="video/*"
-                          multiple={false}
-                          uploading={videoUploading}
-                          label="Video Sürükle & Bırak"
-                          subLabel="MP4, WebM, MOV — max 200 MB"
-                          color="#f87171"
-                          disabled={videoUploading}
-                        />
+                        <DropZone onFiles={handleVideoFiles} accept="video/*" uploading={videoUploading} label="Video Yükle" subLabel="MP4, WebM — max 200 MB" color="#f87171" />
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
-                          <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}>veya URL gir</span>
-                          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
+                          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} /><span style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}>veya URL gir</span><div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
                         </div>
                         <input value={form.video_url} onChange={e => setF("video_url", e.target.value)} style={IS} placeholder="https://..." />
                       </div>
@@ -579,32 +540,31 @@ export default function MagazaPage() {
 
                   {/* YouTube */}
                   <div>
-                    <label style={LBL}><Youtube size={12} style={{ display: "inline", marginRight: 4, color: "#f87171" }} />YouTube / Vimeo URL</label>
+                    <label style={LBL}><Youtube size={12} style={{ display: "inline", marginRight: 4, color: "#f87171" }} />YouTube / Vimeo</label>
                     <input value={form.youtube_url} onChange={e => setF("youtube_url", e.target.value)} style={IS} placeholder="https://www.youtube.com/watch?v=..." />
-                    <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 11, marginTop: 4 }}>Ürün detay sayfasında embed oynatıcı olarak gösterilir.</p>
                   </div>
 
                   {/* Özet */}
                   {(form.cover_image_url || (form.gallery_urls || []).length > 0 || form.video_url || form.youtube_url) && (
-                    <div style={{ background: "rgba(74,222,128,0.05)", border: "1px solid rgba(74,222,128,0.15)", borderRadius: 10, padding: "10px 14px", display: "flex", gap: 12, flexWrap: "wrap" }}>
-                      <CheckCircle2 size={14} style={{ color: "#4ade80", marginTop: 1, flexShrink: 0 }} />
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        {form.cover_image_url && <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>✓ Kapak</span>}
-                        {(form.gallery_urls || []).length > 0 && <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>✓ {(form.gallery_urls || []).length} Galeri</span>}
-                        {form.video_url && <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>✓ Video</span>}
-                        {form.youtube_url && <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>✓ YouTube</span>}
+                    <div style={{ background: "rgba(74,222,128,0.05)", border: "1px solid rgba(74,222,128,0.15)", borderRadius: 10, padding: "10px 14px", display: "flex", gap: 8, alignItems: "center" }}>
+                      <CheckCircle2 size={14} style={{ color: "#4ade80", flexShrink: 0 }} />
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+                        {form.cover_image_url && <span>✓ Kapak</span>}
+                        {(form.gallery_urls || []).length > 0 && <span>✓ {(form.gallery_urls || []).length} Galeri</span>}
+                        {form.video_url && <span>✓ Video</span>}
+                        {form.youtube_url && <span>✓ YouTube</span>}
                       </div>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* ─ DETAY ─ */}
+              {/* DETAY TAB */}
               {mTab === "detay" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div><label style={LBL}>Fiyat (₺) *</label><input type="number" value={form.price} onChange={e => setF("price", Number(e.target.value))} style={IS} /></div>
-                    <div><label style={LBL}>İndirimli Fiyat (₺)</label><input type="number" value={form.discounted_price ?? ""} onChange={e => setF("discounted_price", e.target.value ? Number(e.target.value) : null)} style={IS} placeholder="Boş = indirim yok" /></div>
+                    <div><label style={LBL}>İndirimli (₺)</label><input type="number" value={form.discounted_price ?? ""} onChange={e => setF("discounted_price", e.target.value ? Number(e.target.value) : null)} style={IS} placeholder="Boş = yok" /></div>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div><label style={LBL}>Stok</label><input type="number" value={form.stock} onChange={e => setF("stock", Number(e.target.value))} style={IS} /></div>
@@ -612,35 +572,32 @@ export default function MagazaPage() {
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                     <div><label style={LBL}>Ağırlık</label><input value={form.weight} onChange={e => setF("weight", e.target.value)} style={IS} placeholder="500g" /></div>
-                    <div><label style={LBL}>Boyutlar</label><input value={form.dimensions} onChange={e => setF("dimensions", e.target.value)} style={IS} placeholder="30x20x10 cm" /></div>
-                    <div><label style={LBL}>Malzeme</label><input value={form.material} onChange={e => setF("material", e.target.value)} style={IS} placeholder="Deri..." /></div>
+                    <div><label style={LBL}>Boyutlar</label><input value={form.dimensions} onChange={e => setF("dimensions", e.target.value)} style={IS} placeholder="30x20x10" /></div>
+                    <div><label style={LBL}>Malzeme</label><input value={form.material} onChange={e => setF("material", e.target.value)} style={IS} placeholder="Deri" /></div>
                   </div>
                 </div>
               )}
 
-              {/* ─ SEO ─ */}
+              {/* SEO TAB */}
               {mTab === "seo" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  <div><label style={LBL}>SEO Title</label><input value={form.seo_title} onChange={e => setF("seo_title", e.target.value)} style={IS} placeholder="Ürün başlığı ile aynı olabilir" /></div>
-                  <div><label style={LBL}>SEO Description</label><textarea value={form.seo_description} onChange={e => setF("seo_description", e.target.value)} rows={3} style={TS} placeholder="Kısa açıklama ile aynı olabilir" /></div>
-                  <div><label style={LBL}>URL Slug</label><input value={form.slug} onChange={e => setF("slug", e.target.value)} style={IS} placeholder="otomatik oluşturulur" /></div>
+                  <div><label style={LBL}>SEO Title</label><input value={form.seo_title} onChange={e => setF("seo_title", e.target.value)} style={IS} placeholder={form.name || "Ürün başlığı"} /></div>
+                  <div><label style={LBL}>SEO Description</label><textarea value={form.seo_description} onChange={e => setF("seo_description", e.target.value)} rows={3} style={TS} placeholder={form.short_description || "Kısa açıklama"} /></div>
+                  <div><label style={LBL}>URL Slug</label><input value={form.slug} onChange={e => setF("slug", e.target.value)} style={IS} placeholder="otomatik" /></div>
                 </div>
               )}
 
-              <button
-                onClick={save}
-                disabled={saving || !form.name.trim()}
-                style={{ marginTop: 20, width: "100%", padding: "11px", background: saving ? "#333" : "#7A0D2A", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 10, color: "#fff", fontSize: 14, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-              >
+              {/* Save Button */}
+              <button onClick={save} disabled={saving || !form.name.trim()} style={{ marginTop: 20, width: "100%", padding: "11px", background: saving ? "#333" : "#7A0D2A", border: "1px solid rgba(212,175,55,0.3)", borderRadius: 10, color: "#fff", fontSize: 14, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 {saving && <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} />}
-                {saving ? "Kaydediliyor..." : modal === "add" ? "Ürün Ekle" : "Değişiklikleri Kaydet"}
+                {saving ? "Kaydediliyor..." : modal === "add" ? "Ürün Ekle" : "Kaydet"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ─── Silme Onayı ─────────────────────────────────────────────────────── */}
+      {/* Delete Confirm */}
       {deleteId && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "#141414", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: 28, maxWidth: 380, width: "90%" }}>
@@ -648,7 +605,7 @@ export default function MagazaPage() {
             <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, marginBottom: 24 }}>Bu ürün kalıcı olarak silinecek.</p>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setDeleteId(null)} style={{ flex: 1, padding: "9px", background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 9, color: "rgba(255,255,255,0.6)", cursor: "pointer", fontWeight: 600 }}>İptal</button>
-              <button onClick={confirmDelete} style={{ flex: 1, padding: "9px", background: "#ef4444", border: "none", borderRadius: 9, color: "#fff", cursor: "pointer", fontWeight: 600 }}>Evet, Sil</button>
+              <button onClick={confirmDelete} style={{ flex: 1, padding: "9px", background: "#ef4444", border: "none", borderRadius: 9, color: "#fff", cursor: "pointer", fontWeight: 600 }}>Sil</button>
             </div>
           </div>
         </div>

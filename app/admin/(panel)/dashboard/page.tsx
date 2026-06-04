@@ -66,11 +66,11 @@ export default function DashboardPage() {
         supabase.from("profiles").select("*", { count: "exact", head: true }),
         supabase.from("blog_posts").select("*", { count: "exact", head: true }),
         supabase.from("services").select("*", { count: "exact", head: true }),
-        supabase.from("contact_requests").select("*", { count: "exact", head: true }).eq("status", "new"),
+        supabase.from("contact_messages").select("*", { count: "exact", head: true }).eq("status", "new"),
         supabase.from("products").select("*", { count: "exact", head: true }),
         supabase.from("appointments").select("*", { count: "exact", head: true }).eq("status", "pending"),
         supabase.from("exercises").select("*", { count: "exact", head: true }),
-        supabase.from("contact_requests").select("id, name, email, subject, created_at, status").order("created_at", { ascending: false }).limit(5),
+        supabase.from("contact_messages").select("id, name, email, subject, created_at, status").order("created_at", { ascending: false }).limit(5),
       ]);
 
       setStats({
