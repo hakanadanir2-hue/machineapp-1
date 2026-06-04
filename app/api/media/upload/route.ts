@@ -18,10 +18,10 @@ async function ensureBucket(admin: AdminClient): Promise<void> {
       throw new Error(`Bucket oluşturulamadı: ${error.message}`);
     }
   }
-  // Remove all restrictions (empty array = allow all)
+  // Remove all restrictions
   await admin.storage.updateBucket(BUCKET, {
     public: true,
-    fileSizeLimit: 0,
+    fileSizeLimit: 524288000, // 500MB
     allowedMimeTypes: [] as string[],
   }).catch(() => null);
 }
