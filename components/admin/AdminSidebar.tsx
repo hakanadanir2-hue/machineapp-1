@@ -90,8 +90,8 @@ const navGroups: NavGroup[] = [
   {
     group: "YÖNETİM",
     items: [
-      { label: "Kullanıcılar", href: "/admin/kullanicilar", icon: <Users size={17} /> },
-      { label: "Roller & Yetkiler", href: "/admin/kullanicilar?tab=roles", icon: <Shield size={17} /> },
+      { label: "Kullanıcılar", href: "/admin/users", icon: <Users size={17} /> },
+      { label: "Roller & Yetkiler", href: "/admin/users?tab=roles", icon: <Shield size={17} /> },
       { label: "Randevular", href: "/admin/randevular", icon: <Calendar size={17} /> },
       { label: "İletişim Talepleri", href: "/admin/contact", icon: <MessageSquare size={17} /> },
       { label: "Başvuru & Talepler", href: "/admin/leads", icon: <Inbox size={17} /> },

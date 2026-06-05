@@ -35,7 +35,7 @@ const cardStyle: React.CSSProperties = {
 };
 
 const statCards = [
-  { key: "users", label: "Toplam Kullanıcı", icon: <Users size={20} color="#7A0D25" />, href: "/admin/kullanicilar" },
+  { key: "users", label: "Toplam Kullanıcı", icon: <Users size={20} color="#7A0D25" />, href: "/admin/users" },
   { key: "blogPosts", label: "Blog Yazısı", icon: <BookOpen size={20} color="#D4AF37" />, href: "/admin/blog" },
   { key: "services", label: "Hizmet", icon: <Layers size={20} color="#7A0D25" />, href: "/admin/services" },
   { key: "newMessages", label: "Yeni Mesaj", icon: <MessageSquare size={20} color="#D4AF37" />, href: "/admin/contact" },

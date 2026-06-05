@@ -17,8 +17,8 @@ interface Member {
 
 interface Order {
   id: string;
-  amount: number;
-  status: string;
+  total_amount: number;
+  payment_status: string;
   created_at: string;
   user_id?: string | null;
 }
@@ -105,7 +105,7 @@ export default function MaliPage() {
       const supabase = createClient();
       const [{ data: m }, { data: o }] = await Promise.all([
         supabase.from("members").select("id, full_name, email, membership_end, membership_start, created_at").order("created_at", { ascending: false }),
-        supabase.from("orders").select("id, amount, status, created_at, user_id").order("created_at", { ascending: false }).limit(200),
+        supabase.from("orders").select("id, total_amount, payment_status, created_at, user_id").order("created_at", { ascending: false }).limit(200),
       ]);
       const memberList = (m as Member[]) ?? [];
       const orderList = (o as Order[]) ?? [];
@@ -121,9 +121,9 @@ export default function MaliPage() {
         const revenue = orderList
           .filter((o) => {
             const od = new Date(o.created_at);
-            return od.getFullYear() === yr && od.getMonth() === mo && o.status === "paid";
+            return od.getFullYear() === yr && od.getMonth() === mo && o.payment_status === "paid";
           })
-          .reduce((sum, o) => sum + (o.amount ?? 0), 0);
+          .reduce((sum, o) => sum + (o.total_amount ?? 0), 0);
         const ordersCount = orderList.filter((o) => {
           const od = new Date(o.created_at);
           return od.getFullYear() === yr && od.getMonth() === mo;
@@ -140,10 +140,10 @@ export default function MaliPage() {
     load();
   }, []);
 
-  const totalRevenue = orders.filter((o) => o.status === "paid").reduce((s, o) => s + (o.amount ?? 0), 0);
+  const totalRevenue = orders.filter((o) => o.payment_status === "paid").reduce((s, o) => s + (o.total_amount ?? 0), 0);
   const totalOrders = orders.length;
-  const paidOrders = orders.filter((o) => o.status === "paid").length;
-  const pendingOrders = orders.filter((o) => o.status === "pending").length;
+  const paidOrders = orders.filter((o) => o.payment_status === "paid").length;
+  const pendingOrders = orders.filter((o) => o.payment_status === "pending").length;
   const totalMembers = members.length;
   const activeMembers = members.filter((m) => getMembershipStatus(m.membership_end) === "active").length;
   const expiringMembers = members.filter((m) => getMembershipStatus(m.membership_end) === "expiring").length;
@@ -183,7 +183,7 @@ export default function MaliPage() {
       csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
     } else {
       const headers = ["ID", "Tutar", "Durum", "Tarih"];
-      const rows = orders.map((o) => [o.id, o.amount, o.status, o.created_at]);
+      const rows = orders.map((o) => [o.id, o.total_amount, o.payment_status, o.created_at]);
       csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
     }
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });

@@ -156,14 +156,14 @@ export default function UsersPage() {
 
   const confirmDelete = async () => {
     if (!deleteId) return;
-    const supabase = createClient();
-    const { error } = await supabase.from("profiles").delete().eq("id", deleteId);
+    const res = await fetch(`/api/admin/users/${deleteId}`, { method: "DELETE" });
     setDeleteId(null);
-    if (!error) {
-      showToast("Kullanıcı silindi");
+    if (res.ok) {
+      showToast("Kullanıcı silindi (auth + profil)");
       fetchProfiles();
     } else {
-      showToast("Hata: " + error.message, false);
+      const j = await res.json().catch(() => ({}));
+      showToast("Hata: " + (j.error ?? res.statusText), false);
     }
   };
 

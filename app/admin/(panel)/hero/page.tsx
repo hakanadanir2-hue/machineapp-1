@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { Plus, Trash2, Youtube, Image as ImageIcon, GripVertical, Eye, EyeOff, Upload, X } from "lucide-react";
 
 interface HeroItem {

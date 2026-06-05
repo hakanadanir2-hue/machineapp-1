@@ -116,30 +116,44 @@ export default function BildirimlerPage() {
     if (targets.length === 0) { showToast("Hedef üye seçiniz", false); return; }
     setSending(true);
 
-    // Web Push + DB kaydı için admin API kullan
-    const res = await fetch("/api/admin/send-notification", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...(isBulk ? { send_all: true } : { member_id: targets[0] }),
-        type:    notifType,
-        title:   title.trim(),
-        message: body.trim() || undefined,
-      }),
-    });
+    let okCount = 0;
+    let lastErr: string | null = null;
 
-    // Toplu seçim için (birden fazla ID) ek kayıtlar
-    if (!isBulk && targets.length > 1) {
-      const supabase = createClient();
-      const extras = targets.slice(1).map((member_id) => ({
-        member_id, title: title.trim(), body: body.trim() || null, type: notifType,
-      }));
-      await supabase.from("member_notifications").insert(extras);
+    if (isBulk) {
+      // Tüm üyeler için tek API çağrısı (send_all: true)
+      const res = await fetch("/api/admin/send-notification", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          send_all: true,
+          type:    notifType,
+          title:   title.trim(),
+          message: body.trim() || undefined,
+        }),
+      });
+      if (res.ok) okCount = targets.length;
+      else { const e = await res.json().catch(() => ({})); lastErr = e.error ?? res.statusText; }
+    } else {
+      // Seçili her üye için paralel API çağrısı (her biri push + DB kaydı)
+      const results = await Promise.all(targets.map(member_id =>
+        fetch("/api/admin/send-notification", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            member_id,
+            type:    notifType,
+            title:   title.trim(),
+            message: body.trim() || undefined,
+          }),
+        }).then(async r => ({ ok: r.ok, err: r.ok ? null : ((await r.json().catch(() => ({}))).error ?? r.statusText) }))
+      ));
+      okCount = results.filter(r => r.ok).length;
+      lastErr = results.find(r => !r.ok)?.err ?? null;
     }
 
     setSending(false);
-    if (res.ok) {
-      showToast(`${targets.length} üyeye bildirim gönderildi`);
+    if (okCount > 0) {
+      showToast(`${okCount}/${targets.length} üyeye bildirim gönderildi${lastErr ? ` (bazıları başarısız: ${lastErr})` : ""}`);
       setTitle("");
       setBody("");
       setSelected(new Set());
@@ -152,8 +166,7 @@ export default function BildirimlerPage() {
         .limit(20);
       setRecentNotifs((n as unknown as SentNotif[]) ?? []);
     } else {
-      const err = await res.json().catch(() => ({}));
-      showToast("Hata: " + (err.error ?? res.statusText), false);
+      showToast("Hata: " + (lastErr ?? "Bilinmeyen"), false);
     }
   };
 

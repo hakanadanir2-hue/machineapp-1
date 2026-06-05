@@ -84,8 +84,18 @@ export default function ContentPage() {
     try {
       const fd = new FormData();
       Array.from(files).forEach(f => fd.append("files", f));
-      await fetch("/api/media/upload", { method: "POST", body: fd });
-    } catch { /* ignore */ }
+      const res = await fetch("/api/media/upload", { method: "POST", body: fd });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        alert("Yükleme hatası: " + (j.error ?? res.statusText));
+      } else {
+        const j = await res.json().catch(() => ({}));
+        const errors = (j.results ?? []).filter((r: { error?: string }) => r.error);
+        if (errors.length) alert(`${errors.length} dosya başarısız: ${errors[0].error}`);
+      }
+    } catch (e) {
+      alert("Yükleme bağlantı hatası: " + (e instanceof Error ? e.message : String(e)));
+    }
     setUploading(false);
     if (fileRef.current) fileRef.current.value = "";
     loadMedia();

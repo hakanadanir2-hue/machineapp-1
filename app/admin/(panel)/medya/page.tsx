@@ -306,15 +306,15 @@ export default function MedyaPage() {
 
     // Also add service images, blog covers, product images
     const [svcs, blogs, prods] = await Promise.all([
-      supabase.from("services").select("id,title,image_url"),
+      supabase.from("services").select("id,name,image_url"),
       supabase.from("blog_posts").select("id,title,cover_image_url").limit(50),
       supabase.from("products").select("id,name,cover_image_url").limit(100),
     ]);
 
-    (svcs.data ?? []).forEach((s: { id: string; title: string; image_url: string }) => {
+    (svcs.data ?? []).forEach((s: { id: string; name: string; image_url: string }) => {
       if (s.image_url?.startsWith("http")) {
         if (!urlToAreas[s.image_url]) urlToAreas[s.image_url] = [];
-        urlToAreas[s.image_url].push({ key: `service_${s.id}`, label: s.title, section: "Hizmetler", currentUrl: s.image_url });
+        urlToAreas[s.image_url].push({ key: `service_${s.id}`, label: s.name, section: "Hizmetler", currentUrl: s.image_url });
       }
     });
     (blogs.data ?? []).forEach((b: { id: string; title: string; cover_image_url: string }) => {
